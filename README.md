@@ -52,14 +52,14 @@ so mixed-language documents are segmented correctly.
 |---|---|---|---|---|
 | `text` | string | Yes | — | Input text to process |
 | `max_chars` | number | Yes | 30000 | Character threshold; exceeding triggers trimming |
-| `selection_method` | string | No | `"mmr"` | Sentence selection: `"greedy"` (fast, O(n log n)) or `"mmr"` (diverse, O(n²)) |
-| `mmr_lambda` | number | No | `0.7` | MMR balance (0–1): 0 = pure diversity, 1 = pure relevance. Only used when `selection_method` is `"mmr"` |
+| `method` | select | No | `greedy` | Sentence selection: `"greedy"` (fast, O(n log n)) or `"mmr"` (diverse, O(n²)) |
+| `diversity` | number | No | `0.7` | MMR diversity weight (0–1). 0 = pure diversity, 1 = pure relevance. Clamped to [0, 1]. Ignored when `method` is `"greedy"` |
 
 ## Outputs
 
 | Output | Type | Description |
 |---|---|---|
-| `processed_text` | string | The processed text (original or trimmed). |
+| `text` | string | The processed text (original or trimmed). |
 | `original_char_count` | number | Character count of the original input text. |
 | `processed_char_count` | number | Character count of the output text. |
 | `was_trimmed` | boolean | Whether the text was trimmed (true if original exceeded max_chars). |
@@ -139,9 +139,9 @@ dependencies.
 
 ### 3. Sentence Selection
 
-Two selection strategies are available via the `selection_method` parameter:
+Two selection strategies are available via the `method` parameter:
 
-#### Greedy Selection (`selection_method = "greedy"`)
+#### Greedy Selection (`method = "greedy"`, default)
 
 Simple top-score selection — sentences are sorted by composite score
 descending and added until the character budget is exhausted.
@@ -151,7 +151,7 @@ descending and added until the character budget is exhausted.
 - **Trade-off**: May select multiple sentences covering the same topic,
   producing a more repetitive summary.
 
-#### MMR Selection (`selection_method = "mmr"`, default)
+#### MMR Selection (`method = "mmr"`)
 
 Maximal Marginal Relevance balances relevance with diversity:
 
@@ -162,7 +162,7 @@ MMR = λ × relevance + (1 - λ) × diversity
 - **Relevance**: the sentence's composite score (position + keyword + length).
 - **Diversity**: `1 - max_overlap_ratio` with already-selected sentences,
   measured by token overlap.
-- **λ (lambda)**: configurable via `mmr_lambda` parameter (default 0.7,
+- **λ (lambda)**: configurable via `diversity` parameter (default 0.7,
   favoring relevance moderately). Set to 1.0 for pure relevance (equivalent
   to greedy), or 0.0 for pure diversity.
 - **Speed**: O(n²) — slower but produces a more informative, less redundant
