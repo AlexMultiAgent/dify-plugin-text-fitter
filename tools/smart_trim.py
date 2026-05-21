@@ -17,10 +17,15 @@ class SmartTrimTool(Tool):
         if max_chars <= 0:
             max_chars = 30000
 
-        selection_method = tool_parameters.get("selection_method", "greedy")
-        mmr_lambda = float(tool_parameters.get("mmr_lambda", 0.7))
-        if not (0.0 <= mmr_lambda <= 1.0):
-            mmr_lambda = 0.7
+        method = tool_parameters.get("method", "greedy")
+        try:
+            diversity = float(tool_parameters.get("diversity", 0.7))
+        except (TypeError, ValueError):
+            diversity = 0.7
+        if diversity < 0.0:
+            diversity = 0.0
+        elif diversity > 1.0:
+            diversity = 1.0
 
         original_length = len(text)
 
@@ -33,8 +38,8 @@ class SmartTrimTool(Tool):
 
         processed_text = _extract_key_sentences(
             text, max_chars,
-            selection_method=selection_method,
-            mmr_lambda=mmr_lambda,
+            method=method,
+            diversity=diversity,
         )
         processed_length = len(processed_text)
 
@@ -57,8 +62,8 @@ _ABBREVIATIONS = frozenset({
 def _extract_key_sentences(
     text: str,
     max_chars: int,
-    selection_method: str = "mmr",
-    mmr_lambda: float = 0.7,
+    method: str = "greedy",
+    diversity: float = 0.7,
 ) -> str:
     """Extract the most important sentences from text to fit within max_chars.
 
@@ -78,12 +83,12 @@ def _extract_key_sentences(
     total_sentences = len(sentences)
     scores, sentence_tokens = _score_sentences(sentences, total_sentences)
 
-    if selection_method == "greedy":
+    if method == "greedy":
         selected_indices = _greedy_select(sentences, scores, max_chars)
     else:
-        # Default: MMR-style selection balancing relevance with diversity
+        # MMR-style selection balancing relevance with diversity
         selected_indices = _mmr_select(
-            sentences, scores, sentence_tokens, max_chars, mmr_lambda,
+            sentences, scores, sentence_tokens, max_chars, diversity,
         )
 
     if not selected_indices:

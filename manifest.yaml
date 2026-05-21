@@ -1,4 +1,4 @@
-version: 0.0.1
+version: 0.0.2
 type: plugin
 author: "alex"
 name: text_fitter
@@ -30,7 +30,7 @@ plugins:
   tools:
     - provider/text_fitter.yaml
 meta:
-  version: 0.0.1
+  version: 0.0.2
   arch:
     - amd64
     - arm64
