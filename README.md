@@ -1,148 +1,140 @@
 # Text Fitter — Dify Plugin
 
-文本字数适配器 —— 确保文本不超出 LLM 上下文窗口限制的 Dify 工具插件。
+A Dify tool plugin that ensures text fits within LLM context window limits
+via intelligent extractive summarization. Supports **Chinese**, **Japanese**,
+and **English** text.
 
-## 背景
+## Why
 
-本地化部署 LLM（如 vllm-qwen3.5-9b-awq-marlin）时，受限于硬件环境（GPU 显存）、并发要求和响应速度，实际可用的上下文窗口往往达不到模型官方标称大小。例如，本机 vllm 容器启动参数中明确限制了：
+Locally deployed or resource-constrained LLM instances often have a smaller
+effective context window than the model's official specification — due to
+hardware limits (GPU VRAM), concurrency requirements, or serving parameters
+like `--max-model-len`. When input text exceeds the window, the LLM fails
+with a context-length error.
 
-```
---max-model-len 25000
-```
+This plugin acts as a pre-processing guard: it measures the input, and if it
+exceeds a user-configurable threshold, trims it by extracting only the most
+informative sentences — before the text ever reaches the LLM.
 
-这意味着该模型实际只支持约 25000 tokens 的上下文。当输入文本过长时，LLM 会直接报上下文窗口错误。本插件提供了一个前置处理节点，在文本进入 LLM 之前智能裁剪，确保不会超限。
+## What It Does
 
-## 功能
-
-整合了 Dify 工作流中「总结脑图」应用的以下节点功能：
-
-| 原工作流节点 | 插件实现 |
+| Capability | How |
 |---|---|
-| 计算文本长度 | `original_char_count` / `processed_char_count` 输出变量 |
-| 文本超过 N 字符？ | 自动判断，`was_trimmed` 输出变量 |
-| 智能提取关键句 | 内置算法（见下方说明） |
-| 文本透传（无需提取） | 未超限时自动透传原文 |
-| 变量聚合器 | 用 Python 代码直接聚合输出变量 |
+| Measure text length | Outputs `original_char_count` and `processed_char_count` |
+| Threshold check | Compares input length against user-configured `max_chars` |
+| Smart key-sentence extraction | Built-in extractive summarization (see algorithm below) |
+| Passthrough | Returns text unchanged when within limits |
+| Output aggregation | All metadata emitted as typed variables in a single node |
 
-**关键特性**：字符数阈值由用户在插件参数中自行设定，不硬编码（如 30000），适应不同模型的上下文窗口。
+The character threshold `max_chars` is set by the user when adding the tool
+to a workflow — not hardcoded. Tune it for your specific model and deployment.
 
-## 参数
+## Parameters
 
-| 参数 | 类型 | 必填 | 默认值 | 说明 |
+| Parameter | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `text` | string | 是 | - | 输入文本 |
-| `max_chars` | number | 是 | 30000 | 字符数阈值，超过后触发智能裁剪 |
+| `text` | string | Yes | — | Input text to process |
+| `max_chars` | number | Yes | 30000 | Character threshold; exceeding triggers trimming |
 
-## 输出
+## Outputs
 
-| 输出 | 类型 | 说明 |
+| Output | Type | Description |
 |---|---|---|
-| `text` (主输出) | string | 处理后的文本（原文或裁剪后） |
-| `original_char_count` | number | 原始文本字符数 |
-| `processed_char_count` | number | 处理后文本字符数 |
-| `was_trimmed` | boolean | 是否触发了裁剪 |
+| `text` (main) | string | Processed text — original if within limits, trimmed otherwise |
+| `original_char_count` | number | Character count of the original input |
+| `processed_char_count` | number | Character count of the output text |
+| `was_trimmed` | boolean | `true` if text was trimmed, `false` if passed through unchanged |
 
-## 智能提取关键句算法
+## Smart Key-Sentence Extraction Algorithm
 
-本插件采用**抽取式摘要（Extractive Summarization）**算法，无需外部 NLP 依赖，
-纯统计方法实现。算法分为四个阶段：
+This plugin uses **extractive summarization** — no external NLP dependencies,
+pure Python standard library. Works across Chinese, Japanese, and English.
 
-### 1. 句子分割 (Sentence Segmentation)
+### 1. Sentence Segmentation
 
-使用正则表达式将文本拆分为句子，同时支持：
-- **中文标点**：`。！？；`
-- **英文标点**：`. ! ?` + 后续大写字母
-- **边界情况处理**：小数点（3.14）、省略号（……）、英文缩写（Mr.）
+Regex-based sentence splitting aware of:
 
-### 2. 句子评分 (Sentence Scoring)
+- **CJK fullwidth punctuation**: `。！？；`
+- **English halfwidth punctuation**: `. ! ?` followed by a capital letter or CJK character
+- **Ellipsis**: `...` (English) and `……` (CJK)
+- **Edge cases**: decimal numbers (`3.14`), abbreviations (`Mr.`)
 
-每句话计算一个**综合得分**，由三个子分数加权求和：
+### 2. Sentence Scoring
+
+Each sentence receives a composite score:
 
 ```
-composite = 0.3 × position_score + 0.5 × keyword_score + 0.2 × length_score
+score = 0.3 × position + 0.5 × keyword_density + 0.2 × length
 ```
 
-#### 2.1 位置分数 (Position Score, 权重 0.3)
+#### Position Score (weight 0.3)
 
-文章开头和结尾通常包含最重要的信息：
+Sentences near the beginning (introduction) and end (conclusion) of a
+document tend to carry more weight:
 
-- **前 20% 句子**（引言）：得分 0.7~1.0，越靠前越高
-- **后 10% 句子**（结论）：得分 0.6~1.0，越靠后越高
-- **中间 70% 句子**（正文细节）：得分 0.2~0.5，线性衰减
-
-#### 2.2 关键词密度分数 (Keyword Density Score, 权重 0.5)
-
-基于 **TF（词频）** 统计自动发现文档关键词：
-
-1. 对整个文档分词（中文按字切分，英文按词切分）
-2. 统计每个词的全局出现频率
-3. 对每句话，计算其包含词的平均词频
-4. 包含高频词的句子得分更高
-
-这是算法的核心：**一个词在整个文档中出现越频繁，它越可能是关键词；
-包含这些关键词越多的句子，越能代表文档主旨。**
-
-#### 2.3 长度分数 (Length Score, 权重 0.2)
-
-根据句子长度给予不同权重：
-
-| 长度范围 | 得分 | 说明 |
-|---|---|---|
-| < 10 字 | 0.15 | 太短，通常是过渡句 |
-| 10-20 字 | 0.50 | 偏短，信息量有限 |
-| 20-150 字 | 0.90-1.00 | 理想长度，信息密度高 |
-| 150-200 字 | 0.60 | 偏长，可能冗余 |
-| > 200 字 | 0.30 | 过长，信息过于密集 |
-
-### 3. 贪心选择 (Greedy Selection)
-
-1. 将所有句子按综合得分从高到低排序
-2. 从最高分开始，依次选取句子
-3. 累加所选句子的字符数
-4. 当累加长度达到 `max_chars` 时停止
-
-### 4. 原文排序 (Positional Reordering)
-
-将选中的句子按**原文出现顺序**重新排列，保持文本的连贯性和可读性。
-
-### 算法复杂度
-
-| 指标 | 值 |
+| Position | Score |
 |---|---|
-| 时间复杂度 | O(n log n)，n 为句子数 |
-| 空间复杂度 | O(n) |
-| 外部依赖 | 无（仅 Python 标准库） |
+| First 20% (intro) | 0.7–1.0 |
+| Last 10% (conclusion) | 0.6–1.0 |
+| Middle 70% | 0.2–0.5 (linear decay) |
 
-## 使用示例
+#### Keyword Density Score (weight 0.5)
 
-### Dify 工作流中使用
+The core of the algorithm. A lightweight TF (term frequency) analysis:
 
-1. 安装本插件到 Dify
-2. 在工作流中添加「Smart Trim / 智能裁剪」节点
-3. 配置参数：
-   - `text`：绑定上游文本变量（如文档解析器输出）
-   - `max_chars`：根据模型上下文窗口设置（如 vllm max-model-len=25000 时可设为 20000）
-4. 将节点输出连接到下游 LLM 节点
+1. Tokenize the entire document — CJK characters and Japanese kana are
+   individual tokens; English words are extracted by word-boundary regex.
+2. Build a global word-frequency counter.
+3. For each sentence, compute the average frequency of its constituent tokens.
+4. Sentences rich in high-frequency tokens score higher — they are more
+   representative of the document's subject matter.
 
-### 本机 vllm 配置参考
+This works without dictionaries or pre-trained models.
 
-```
-容器名: vllm-qwen3.5-9b-awq-marlin
-镜像: vllm/vllm-openai:v0.20.2
-参数: --max-model-len 25000 --quantization awq_marlin
-建议 max_chars 设置: 20000（保守估计，约等价于 25000 tokens）
-```
+#### Length Score (weight 0.2)
 
-## 开发
+| Length | Score | Rationale |
+| --- | --- | --- |
+| < 10 chars | 0.15 | Too short (filler / transition) |
+| 10–20 chars | 0.50 | On the short side |
+| 20–150 chars | 0.90–1.00 | Ideal information density |
+| 150–200 chars | 0.60 | Getting verbose |
+| > 200 chars | 0.30 | Overly dense |
 
-```bash
-# 安装依赖
-uv sync
+### 3. Greedy Selection
 
-# 本地测试
-uv run python -c "from tools.smart_trim import _extract_key_sentences; print(_extract_key_sentences('你的测试文本...', 100))"
-```
+Sort all sentences by composite score (descending). Pick sentences one by one
+until the cumulative character count reaches `max_chars`.
 
-## 许可
+### 4. Positional Reordering
 
-MIT License
+Selected sentences are re-sorted by their original order in the text, so the
+output remains coherent and readable.
+
+### Complexity
+
+| Metric | Value |
+|---|---|
+| Time | O(n log n), where n = number of sentences |
+| Space | O(n) |
+| Dependencies | None (Python stdlib only) |
+
+## Usage
+
+1. Install the plugin into your Dify workspace.
+2. In a workflow, add the **Smart Trim** node.
+3. Wire `text` to your upstream content source (document parser, HTTP input, etc.).
+4. Set `max_chars` to a value below your LLM's actual context limit.
+5. Connect the node's text output to your downstream LLM node.
+6. Optionally use `was_trimmed` to branch logic (e.g. log a warning when trimming occurred).
+
+### Choosing max_chars
+
+A conservative rule of thumb: set `max_chars` to ~80% of the token limit for
+your model. For example, if your serving parameters specify
+`--max-model-len 25000`, try `max_chars: 20000` as a starting point. Adjust
+based on observed behavior with your specific workload.
+
+## License
+
+MIT

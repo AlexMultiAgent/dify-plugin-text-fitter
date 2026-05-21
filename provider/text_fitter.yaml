@@ -2,14 +2,16 @@ extra:
   python:
     source: provider/text_fitter.py
 identity:
-  author: local
+  author: alex
   name: text_fitter
   label:
     en_US: Text Fitter
     zh_Hans: 文本字数适配器
+    ja_JP: テキストフィッター
   description:
-    en_US: Smart text trimming for context window constraints.
-    zh_Hans: 为上下文窗口限制提供智能文本裁剪。
+    en_US: Smart text trimming for LLM context window constraints.
+    zh_Hans: 用于LLM上下文窗口受限等情形的智能文本裁剪工具。
+    ja_JP: LLMのコンテキストウィンドウ制約に対応するスマートテキストトリミング。
   icon: icon.svg
   tags:
     - productivity

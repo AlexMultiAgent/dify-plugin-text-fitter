@@ -3,28 +3,31 @@ description:
     en_US: >
       Calculates text length and ensures it fits within a configurable character
       limit. If the text exceeds the limit, intelligently extracts the most
-      important sentences (extractive summarization). Otherwise, passes the text
-      through unchanged. Use this when downstream LLMs have constrained context
-      windows (e.g. locally deployed models).
+      important sentences using extractive summarization. Otherwise, passes the
+      text through unchanged. Supports Chinese, Japanese, and English input.
     zh_Hans: >
-      计算文本长度，确保其不超出可配置的字符限制。如果文本超限，
-      智能提取最重要的句子（抽取式摘要）；未超限则直接透传原文。
-      适用于下游LLM上下文窗口受限的场景（如本地部署模型）。
+      计算文本长度，确保其不超出可配置的字符限制。文本超限时通过抽取式摘要
+      智能提取关键句，未超限时直接透传原文。支持中、日、英文文本。
+    ja_JP: >
+      テキスト長を計算し、設定可能な文字数制限内に収めます。制限を超えた場合、
+      抽出型要約で重要な文を抽出し、制限内の場合はそのまま通過します。
+      中国語、日本語、英語に対応。
   llm: >
-    A tool that checks whether the input text exceeds a character limit. If it
-    does, it intelligently extracts the most important sentences to reduce the
-    length. If not, it returns the original text unchanged. Outputs the processed
-    text along with original_char_count, processed_char_count, and was_trimmed
-    variables.
+    A tool that checks whether the input text exceeds a configurable character
+    limit. If it does, intelligently extracts the most important sentences
+    (extractive summarization). Supports Chinese, Japanese, and English text.
+    Outputs the processed text plus metadata: original_char_count,
+    processed_char_count, and was_trimmed.
 extra:
   python:
     source: tools/smart_trim.py
 identity:
-  author: local
+  author: alex
   name: smart_trim
   label:
     en_US: Smart Trim
     zh_Hans: 智能裁剪
+    ja_JP: スマートトリム
 parameters:
   - name: text
     type: string
@@ -32,9 +35,11 @@ parameters:
     label:
       en_US: Input Text
       zh_Hans: 输入文本
+      ja_JP: 入力テキスト
     human_description:
       en_US: The text to be checked and trimmed.
       zh_Hans: 需要检查和裁剪的文本。
+      ja_JP: チェックとトリミングを行うテキスト。
     llm_description: The text content to be checked and processed.
     form: llm
   - name: max_chars
@@ -44,14 +49,18 @@ parameters:
     label:
       en_US: Maximum Characters
       zh_Hans: 最大字符数
+      ja_JP: 最大文字数
     human_description:
       en_US: >
-        The character limit. Text exceeding this will be intelligently trimmed
-        down. Set this based on your LLM's actual context window (e.g. vllm
-        --max-model-len 25000 means ~25000 tokens, so set conservatively).
+        The character limit. Text exceeding this will be trimmed. Set this based
+        on your LLM's actual context window (e.g. --max-model-len 25000 means
+        ~25000 tokens; set max_chars conservatively lower).
       zh_Hans: >
-        字符数阈值。超过此限制的文本将被智能裁剪。请根据LLM实际上下文窗口设置
-        （如 vllm --max-model-len 25000 表示约25000 tokens，需保守设置）。
+        字符数阈值。超过此限制的文本将被裁剪。请根据LLM实际上下文窗口设置
+        （如 --max-model-len 25000 表示约25000 tokens，需保守设置）。
+      ja_JP: >
+        文字数のしきい値。これを超えるテキストはトリミングされます。
+        LLMの実際のコンテキストウィンドウに基づいて設定してください。
     llm_description: Maximum allowed character count before trimming is triggered.
     form: llm
 output_schema:

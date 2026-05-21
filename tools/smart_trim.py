@@ -35,8 +35,10 @@ class SmartTrimTool(Tool):
 def _extract_key_sentences(text: str, max_chars: int) -> str:
     """Extract the most important sentences from text to fit within max_chars.
 
+    Supports Chinese, Japanese, and English text.
+
     Algorithm overview (see README for full details):
-    1. Segment text into sentences (Chinese + English punctuation aware)
+    1. Segment text into sentences (CJK + Japanese + English punctuation aware)
     2. Score each sentence by position, keyword density, and length
     3. Greedily select top-scoring sentences within the character budget
     4. Reorder selected sentences by original position for coherence
@@ -67,17 +69,17 @@ def _extract_key_sentences(text: str, max_chars: int) -> str:
 
 
 def _split_sentences(text: str) -> list[str]:
-    """Split text into sentences supporting Chinese and English punctuation.
+    """Split text into sentences supporting CJK, Japanese, and English punctuation.
 
     Handles edge cases: decimal numbers (3.14), abbreviations (Mr.),
-    ellipsis (...), and common Chinese dot separators.
+    ellipsis (... / ……), and CJK punctuation variants.
     """
-    # Insert newlines after Chinese sentence-ending punctuation
+    # CJK fullwidth sentence-ending punctuation (Chinese / Japanese)
     text = re.sub(r"([。！？；])(?=[^\n])", r"\1\n", text)
-    # Insert newlines after English sentence-ending punctuation followed by capital/Chinese
-    text = re.sub(r"([.!?])(\s+)(?=[A-Z一-鿿])", r"\1\2\n", text)
-    # Insert newlines after ellipsis followed by capital/Chinese
-    text = re.sub(r"(\.{3,})(?=[A-Z一-鿿])", r"\1\n", text)
+    # English halfwidth sentence-ending punctuation followed by capital or CJK
+    text = re.sub(r"([.!?])(\s+)(?=[A-Z一-鿿぀-ゟ゠-ヿ])", r"\1\2\n", text)
+    # Ellipsis followed by capital or CJK (English "..." or CJK "……")
+    text = re.sub(r"((?:\.|…){3,})(?=[A-Z一-鿿぀-ゟ゠-ヿ])", r"\1\n", text)
 
     sentences = []
     for sent in re.split(r"\n+", text):
@@ -103,7 +105,8 @@ def _score_sentences(sentences: list[str], total_count: int) -> list[float]:
 def _build_word_counter(sentences: list[str]) -> Counter:
     """Build a word frequency counter from all sentences.
 
-    Tokenizes Chinese text by individual characters and English text by words.
+    Tokenizes CJK characters individually, Japanese kana individually,
+    and English text by words.
     """
     counter: Counter = Counter()
     for sent in sentences:
@@ -113,15 +116,20 @@ def _build_word_counter(sentences: list[str]) -> Counter:
 
 
 def _tokenize(text: str) -> list[str]:
-    """Tokenize mixed Chinese-English text.
+    """Tokenize mixed CJK/Japanese/English text.
 
-    Chinese characters are treated as individual tokens.
+    CJK ideographs and Japanese kana are treated as individual tokens.
     English words are extracted via word-boundary regex.
     Punctuation and whitespace are excluded.
     """
     tokens: list[str] = []
     for char in text:
-        if "一" <= char <= "鿿" or "㐀" <= char <= "䶿":
+        if (
+            "一" <= char <= "鿿"  # CJK Unified Ideographs
+            or "㐀" <= char <= "䶿"  # CJK Extension A
+            or "぀" <= char <= "ゟ"  # Hiragana
+            or "゠" <= char <= "ヿ"  # Katakana
+        ):
             tokens.append(char)
     words = re.findall(r"[a-zA-Z0-9]+", text)
     tokens.extend(w.lower() for w in words if len(w) > 1)

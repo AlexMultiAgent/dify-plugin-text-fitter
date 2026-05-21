@@ -1,18 +1,25 @@
 version: 0.0.1
 type: plugin
-author: "local"
+author: "alex"
 name: text_fitter
 label:
   en_US: Text Fitter
   zh_Hans: 文本字数适配器
+  ja_JP: テキストフィッター
 description:
   en_US: >
-    Smart text trimming tool for context window constraints. Calculates text
+    Smart text trimming for LLM context window constraints. Calculates text
     length, intelligently extracts key sentences when text exceeds a configurable
     character threshold, or passes text through unchanged when within limits.
+    Supports Chinese, Japanese, and English text.
   zh_Hans: >
-    用于上下文窗口限制的智能文本裁剪工具。计算文本长度，
+    用于LLM上下文窗口受限等情形的智能文本裁剪工具。计算文本长度，
     当文本超过可配置的字符阈值时智能提取关键句，未超限时直接透传。
+    支持中文、日文、英文文本。
+  ja_JP: >
+    LLMのコンテキストウィンドウ制約に対応するスマートテキストトリミングツール。
+    テキスト長を計算し、設定可能なしきい値を超えた場合は重要文を抽出、
+    制限内の場合はそのまま通過します。中国語、日本語、英語に対応。
 icon: icon.svg
 resource:
   memory: 268435456
