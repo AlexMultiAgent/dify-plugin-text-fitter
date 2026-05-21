@@ -24,10 +24,25 @@ informative sentences — before the text ever reaches the LLM.
 | Threshold check | Compares input length against user-configured `max_chars` |
 | Smart key-sentence extraction | Built-in extractive summarization (see algorithm below) |
 | Passthrough | Returns text unchanged when within limits |
-| Output aggregation | All metadata emitted as typed variables in a single node |
+| Language auto-detection | Recognizes Chinese, Japanese, and English; no manual selection needed |
 
 The character threshold `max_chars` is set by the user when adding the tool
 to a workflow — not hardcoded. Tune it for your specific model and deployment.
+
+## Language Support
+
+The tool automatically handles **Chinese**, **Japanese**, and **English** text
+without any language selector parameter. The tokenizer recognizes:
+
+- **CJK Unified Ideographs** (U+4E00–U+9FFF) — covers Chinese *kanji* / Japanese *kanji*
+- **CJK Extension A** (U+3400–U+4DBF) — rare and historical characters
+- **Hiragana** (U+3040–U+309F) — Japanese syllabary
+- **Katakana** (U+30A0–U+30FF) — Japanese syllabary
+- **Latin words** — extracted via word-boundary regex (`[a-zA-Z0-9]+`)
+
+The sentence splitter likewise handles CJK fullwidth punctuation (`。！？；`)
+alongside English halfwidth punctuation (`. ! ?`), so mixed-language documents
+are segmented correctly.
 
 ## Parameters
 
@@ -40,10 +55,10 @@ to a workflow — not hardcoded. Tune it for your specific model and deployment.
 
 | Output | Type | Description |
 |---|---|---|
-| `text` (main) | string | Processed text — original if within limits, trimmed otherwise |
-| `original_char_count` | number | Character count of the original input |
-| `processed_char_count` | number | Character count of the output text |
-| `was_trimmed` | boolean | `true` if text was trimmed, `false` if passed through unchanged |
+| `processed_text` | string | The processed text (original or trimmed). |
+| `original_char_count` | number | Character count of the original input text. |
+| `processed_char_count` | number | Character count of the output text. |
+| `was_trimmed` | boolean | Whether the text was trimmed (true if original exceeded max_chars). |
 
 ## Smart Key-Sentence Extraction Algorithm
 
@@ -82,8 +97,10 @@ document tend to carry more weight:
 
 The core of the algorithm. A lightweight TF (term frequency) analysis:
 
-1. Tokenize the entire document — CJK characters and Japanese kana are
-   individual tokens; English words are extracted by word-boundary regex.
+1. Tokenize the entire document — CJK ideographs and Japanese kana become
+   individual character tokens; English words are extracted by word-boundary
+   regex. Language detection is implicit in the Unicode ranges, so mixed
+   Chinese/Japanese/English text is handled without configuration.
 2. Build a global word-frequency counter.
 3. For each sentence, compute the average frequency of its constituent tokens.
 4. Sentences rich in high-frequency tokens score higher — they are more

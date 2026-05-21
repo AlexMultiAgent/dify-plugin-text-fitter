@@ -18,6 +18,7 @@ class SmartTrimTool(Tool):
 
         if original_length <= max_chars:
             yield self.create_text_message(text)
+            yield self.create_variable_message("processed_text", text)
             yield self.create_variable_message("original_char_count", original_length)
             yield self.create_variable_message("processed_char_count", original_length)
             yield self.create_variable_message("was_trimmed", False)
@@ -27,6 +28,7 @@ class SmartTrimTool(Tool):
         processed_length = len(processed_text)
 
         yield self.create_text_message(processed_text)
+        yield self.create_variable_message("processed_text", processed_text)
         yield self.create_variable_message("original_char_count", original_length)
         yield self.create_variable_message("processed_char_count", processed_length)
         yield self.create_variable_message("was_trimmed", True)
