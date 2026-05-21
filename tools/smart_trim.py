@@ -72,9 +72,12 @@ def _split_sentences(text: str) -> list[str]:
     Handles edge cases: decimal numbers (3.14), abbreviations (Mr.),
     ellipsis (...), and common Chinese dot separators.
     """
-    text = re.sub(r"([。！？；])([^"'])", r"\1\n\2", text)
-    text = re.sub(r"([.!?])(\s+)([A-Z一-鿿])", r"\1\2\n\3", text)
-    text = re.sub(r"(\.{3,})([A-Z一-鿿])", r"\1\n\2", text)
+    # Insert newlines after Chinese sentence-ending punctuation
+    text = re.sub(r"([。！？；])(?=[^\n])", r"\1\n", text)
+    # Insert newlines after English sentence-ending punctuation followed by capital/Chinese
+    text = re.sub(r"([.!?])(\s+)(?=[A-Z一-鿿])", r"\1\2\n", text)
+    # Insert newlines after ellipsis followed by capital/Chinese
+    text = re.sub(r"(\.{3,})(?=[A-Z一-鿿])", r"\1\n", text)
 
     sentences = []
     for sent in re.split(r"\n+", text):
