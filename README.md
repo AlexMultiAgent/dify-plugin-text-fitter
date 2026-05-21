@@ -53,7 +53,7 @@ so mixed-language documents are segmented correctly.
 | `text` | string | Yes | — | Input text to process |
 | `max_chars` | number | Yes | 30000 | Character threshold; exceeding triggers trimming |
 | `method` | select | No | `greedy` | Sentence selection: `"greedy"` (fast, O(n log n)) or `"mmr"` (diverse, O(n²)) |
-| `mmr_diversity` | select | No | `0.7` | MMR diversity weight. 11 options from `0.0` (Pure Diversity) to `1.0` (Pure Relevance). Ignored when `method` is `"greedy"` |
+| `mmr_lambda` | select | No | `0.7` | MMR λ (relevance weight). 11 options from `0.0` (Pure Diversity) to `1.0` (Pure Relevance). Ignored when `method` is `"greedy"` |
 
 ## Outputs
 
@@ -162,7 +162,7 @@ MMR = λ × relevance + (1 - λ) × diversity
 - **Relevance**: the sentence's composite score (position + keyword + length).
 - **Diversity**: `1 - max_overlap_ratio` with already-selected sentences,
   measured by token overlap.
-- **λ (lambda)**: configurable via `mmr_diversity` parameter (default 0.7,
+- **λ (lambda)**: configurable via `mmr_lambda` parameter (default 0.7,
   favoring relevance moderately). Set to 1.0 for pure relevance (equivalent
   to greedy), or 0.0 for pure diversity.
 - **Speed**: O(n²) — slower but produces a more informative, less redundant

@@ -99,28 +99,28 @@ parameters:
           zh_Hans: MMR（多样）
           ja_JP: MMR（多様）
     form: form
-  - name: mmr_diversity
+  - name: mmr_lambda
     type: select
     required: false
     default: "0.7"
     label:
-      en_US: MMR Diversity
-      zh_Hans: MMR多样性权重
-      ja_JP: MMR多様性重み
+      en_US: MMR Lambda (λ)
+      zh_Hans: MMR λ 参数
+      ja_JP: MMR λパラメータ
     human_description:
       en_US: >
-        MMR relevance vs. diversity balance. 0 = pure diversity
+        MMR relevance parameter λ (lambda). 0 = pure diversity
         (maximum variation), 1 = pure relevance (same as greedy).
         Default 0.7. Ignored when method is "greedy".
       zh_Hans: >
-        MMR相关性与多样性平衡。0=纯多样性（最大差异），
+        MMR相关性参数λ。0=纯多样性（最大差异），
         1=纯相关性（同贪心）。默认0.7。method为"greedy"时忽略。
       ja_JP: >
-        MMRの関連性と多様性のバランス。0=純粋な多様性、
+        MMR関連性パラメータλ。0=純粋な多様性、
         1=純粋な関連性（貪欲と同じ）。デフォルト0.7。
         methodが"greedy"の場合は無視。
     llm_description: >
-      MMR diversity weight (0=pure diversity, 1=pure relevance). Default 0.7.
+      MMR lambda (λ) parameter. 0=pure diversity, 1=pure relevance. Default 0.7.
       Ignored when method is "greedy".
     options:
       - value: "0.0"

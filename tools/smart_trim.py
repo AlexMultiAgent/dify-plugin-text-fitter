@@ -41,7 +41,7 @@ class SmartTrimTool(Tool):
         if method not in ("greedy", "mmr"):
             method = "greedy"
         try:
-            diversity = float(tool_parameters.get("mmr_diversity", 0.7))
+            diversity = float(tool_parameters.get("mmr_lambda", 0.7))
         except (TypeError, ValueError):
             diversity = 0.7
         if diversity < 0.0:
