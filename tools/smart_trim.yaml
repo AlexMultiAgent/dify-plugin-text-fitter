@@ -57,9 +57,6 @@ parameters:
 output_schema:
   type: object
   properties:
-    processed_text:
-      type: string
-      description: The processed text (original or trimmed).
     original_char_count:
       type: number
       description: Character count of the original input text.
