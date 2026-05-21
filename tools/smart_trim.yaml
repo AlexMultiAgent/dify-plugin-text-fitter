@@ -99,38 +99,85 @@ parameters:
           zh_Hans: MMR（多样）
           ja_JP: MMR（多様）
     form: form
-  - name: diversity
-    type: number
+  - name: mmr_diversity
+    type: select
     required: false
-    default: 0.7
-    min: 0
-    max: 1
-    placeholder:
-      en_US: "0.0 ~ 1.0"
-      zh_Hans: "0.0 ~ 1.0"
-      ja_JP: "0.0 ~ 1.0"
+    default: "0.7"
     label:
-      en_US: Diversity
-      zh_Hans: 多样性权重
-      ja_JP: 多様性重み
+      en_US: MMR Diversity
+      zh_Hans: MMR多样性权重
+      ja_JP: MMR多様性重み
     human_description:
       en_US: >
         MMR relevance vs. diversity balance. 0 = pure diversity
         (maximum variation), 1 = pure relevance (same as greedy).
         Default 0.7. Ignored when method is "greedy".
-        Value will be clamped to [0, 1] if out of range.
       zh_Hans: >
         MMR相关性与多样性平衡。0=纯多样性（最大差异），
         1=纯相关性（同贪心）。默认0.7。method为"greedy"时忽略。
-        超出范围的值会被自动限制在[0, 1]区间内。
       ja_JP: >
         MMRの関連性と多様性のバランス。0=純粋な多様性、
         1=純粋な関連性（貪欲と同じ）。デフォルト0.7。
         methodが"greedy"の場合は無視。
-        範囲外の値は自動的に[0, 1]に制限されます。
     llm_description: >
       MMR diversity weight (0=pure diversity, 1=pure relevance). Default 0.7.
-      Ignored when method is "greedy". Out-of-range values are clamped to [0, 1].
+      Ignored when method is "greedy".
+    options:
+      - value: "0.0"
+        label:
+          en_US: "0.0 (Pure Diversity)"
+          zh_Hans: "0.0（纯多样性）"
+          ja_JP: "0.0（純粋な多様性）"
+      - value: "0.1"
+        label:
+          en_US: "0.1"
+          zh_Hans: "0.1"
+          ja_JP: "0.1"
+      - value: "0.2"
+        label:
+          en_US: "0.2"
+          zh_Hans: "0.2"
+          ja_JP: "0.2"
+      - value: "0.3"
+        label:
+          en_US: "0.3"
+          zh_Hans: "0.3"
+          ja_JP: "0.3"
+      - value: "0.4"
+        label:
+          en_US: "0.4"
+          zh_Hans: "0.4"
+          ja_JP: "0.4"
+      - value: "0.5"
+        label:
+          en_US: "0.5 (Balanced)"
+          zh_Hans: "0.5（平衡）"
+          ja_JP: "0.5（バランス）"
+      - value: "0.6"
+        label:
+          en_US: "0.6"
+          zh_Hans: "0.6"
+          ja_JP: "0.6"
+      - value: "0.7"
+        label:
+          en_US: "0.7 (Recommended)"
+          zh_Hans: "0.7（推荐）"
+          ja_JP: "0.7（推奨）"
+      - value: "0.8"
+        label:
+          en_US: "0.8"
+          zh_Hans: "0.8"
+          ja_JP: "0.8"
+      - value: "0.9"
+        label:
+          en_US: "0.9"
+          zh_Hans: "0.9"
+          ja_JP: "0.9"
+      - value: "1.0"
+        label:
+          en_US: "1.0 (Pure Relevance)"
+          zh_Hans: "1.0（纯相关性）"
+          ja_JP: "1.0（純粋な関連性）"
     form: form
 output_schema:
   type: object

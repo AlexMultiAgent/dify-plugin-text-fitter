@@ -12,14 +12,36 @@ class SmartTrimTool(Tool):
     def _invoke(
         self, tool_parameters: dict[str, Any]
     ) -> Generator[ToolInvokeMessage, None, None]:
-        text = tool_parameters.get("text", "")
-        max_chars = int(tool_parameters.get("max_chars", 30000))
+        try:
+            yield from self._do_invoke(tool_parameters)
+        except Exception:
+            import sys
+            import traceback
+            exc = traceback.format_exc()
+            print(exc, file=sys.stderr, flush=True)
+            yield self.create_text_message(
+                tool_parameters.get("text") or ""
+            )
+            yield self.create_variable_message("original_char_count", 0)
+            yield self.create_variable_message("processed_char_count", 0)
+            yield self.create_variable_message("was_trimmed", False)
+
+    def _do_invoke(
+        self, tool_parameters: dict[str, Any]
+    ) -> Generator[ToolInvokeMessage, None, None]:
+        text = tool_parameters.get("text") or ""
+        try:
+            max_chars = int(tool_parameters.get("max_chars", 30000))
+        except (TypeError, ValueError):
+            max_chars = 30000
         if max_chars <= 0:
             max_chars = 30000
 
         method = tool_parameters.get("method", "greedy")
+        if method not in ("greedy", "mmr"):
+            method = "greedy"
         try:
-            diversity = float(tool_parameters.get("diversity", 0.7))
+            diversity = float(tool_parameters.get("mmr_diversity", 0.7))
         except (TypeError, ValueError):
             diversity = 0.7
         if diversity < 0.0:
