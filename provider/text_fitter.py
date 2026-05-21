@@ -4,7 +4,6 @@ from dify_plugin.errors.tool import ToolProviderCredentialValidationError
 
 class TextFitterProvider(ToolProvider):
     def _validate_credentials(self, credentials: dict) -> None:
-        try:
-            pass
-        except Exception as e:
-            raise ToolProviderCredentialValidationError(str(e))
+        # This tool does not require any credentials (no API keys needed).
+        # The validation always passes.
+        pass

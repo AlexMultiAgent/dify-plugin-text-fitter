@@ -13,7 +13,7 @@ like `--max-model-len`. When input text exceeds the window, the LLM fails
 with a context-length error.
 
 This plugin acts as a pre-processing guard: it measures the input, and if it
-exceeds a user-configurable threshold, trims it by extracting only the most
+exceeds a user-configured threshold, trims it by extracting only the most
 informative sentences — before the text ever reaches the LLM.
 
 ## What It Does
@@ -25,6 +25,7 @@ informative sentences — before the text ever reaches the LLM.
 | Smart key-sentence extraction | Built-in extractive summarization (see algorithm below) |
 | Passthrough | Returns text unchanged when within limits |
 | Language auto-detection | Recognizes Chinese, Japanese, and English; no manual selection needed |
+| Diversity-aware selection | MMR algorithm reduces redundant sentences in the output |
 
 The character threshold `max_chars` is set by the user when adding the tool
 to a workflow — not hardcoded. Tune it for your specific model and deployment.
@@ -40,9 +41,10 @@ without any language selector parameter. The tokenizer recognizes:
 - **Katakana** (U+30A0–U+30FF) — Japanese syllabary
 - **Latin words** — extracted via word-boundary regex (`[a-zA-Z0-9]+`)
 
-The sentence splitter likewise handles CJK fullwidth punctuation (`。！？；`)
-alongside English halfwidth punctuation (`. ! ?`), so mixed-language documents
-are segmented correctly.
+The sentence splitter likewise handles CJK fullwidth punctuation (`。！？`),
+Japanese closing brackets (`」』`), English halfwidth punctuation (`. ! ?`),
+ellipsis (`...` / `……`), and common abbreviations (`Mr.`, `Dr.`, etc.),
+so mixed-language documents are segmented correctly.
 
 ## Parameters
 
@@ -50,6 +52,8 @@ are segmented correctly.
 |---|---|---|---|---|
 | `text` | string | Yes | — | Input text to process |
 | `max_chars` | number | Yes | 30000 | Character threshold; exceeding triggers trimming |
+| `selection_method` | string | No | `"mmr"` | Sentence selection: `"greedy"` (fast, O(n log n)) or `"mmr"` (diverse, O(n²)) |
+| `mmr_lambda` | number | No | `0.7` | MMR balance (0–1): 0 = pure diversity, 1 = pure relevance. Only used when `selection_method` is `"mmr"` |
 
 ## Outputs
 
@@ -69,10 +73,11 @@ pure Python standard library. Works across Chinese, Japanese, and English.
 
 Regex-based sentence splitting aware of:
 
-- **CJK fullwidth punctuation**: `。！？；`
+- **CJK fullwidth punctuation**: `。！？` (note: `；` is excluded as it separates clauses, not sentences)
+- **Japanese closing brackets**: `」』`
 - **English halfwidth punctuation**: `. ! ?` followed by a capital letter or CJK character
-- **Ellipsis**: `...` (English) and `……` (CJK)
-- **Edge cases**: decimal numbers (`3.14`), abbreviations (`Mr.`)
+- **Ellipsis**: `...` (English, 3+ dots) and `……` (CJK, 2+ `…` characters)
+- **Abbreviation protection**: Known abbreviations like `Mr.`, `Dr.`, `Inc.`, `etc.` are protected from being incorrectly split as sentence boundaries
 
 ### 2. Sentence Scoring
 
@@ -85,28 +90,42 @@ score = 0.3 × position + 0.5 × keyword_density + 0.2 × length
 #### Position Score (weight 0.3)
 
 Sentences near the beginning (introduction) and end (conclusion) of a
-document tend to carry more weight:
+document carry more weight. The function is continuous across the full range:
 
-| Position | Score |
+| Position | Score Range |
 |---|---|
-| First 20% (intro) | 0.7–1.0 |
-| Last 10% (conclusion) | 0.6–1.0 |
-| Middle 70% | 0.2–0.5 (linear decay) |
+| First 20% (intro) | 1.0 → 0.7 |
+| Middle 70% | 0.7 → 0.2 (linear decay) |
+| Last 10% (conclusion) | 0.2 → 1.0 |
 
-#### Keyword Density Score (weight 0.5)
+#### Keyword Density Score (weight 0.5) — Normalized TF-IDF
 
-The core of the algorithm. A lightweight TF (term frequency) analysis:
+The core of the algorithm. A lightweight TF-IDF (term frequency — inverse
+document frequency) analysis, **normalized by unique token count** to prevent
+bias toward sentences with larger vocabulary:
 
 1. Tokenize the entire document — CJK ideographs and Japanese kana become
    individual character tokens; English words are extracted by word-boundary
    regex. Language detection is implicit in the Unicode ranges, so mixed
    Chinese/Japanese/English text is handled without configuration.
-2. Build a global word-frequency counter.
-3. For each sentence, compute the average frequency of its constituent tokens.
-4. Sentences rich in high-frequency tokens score higher — they are more
-   representative of the document's subject matter.
+   Each sentence is tokenized only once; results are cached for the scoring
+   phase.
+2. Build a document-frequency (DF) counter — records how many sentences each
+   token appears in.
+3. For each sentence, compute a TF-IDF score:
+   - **TF** (term frequency): token count within the sentence ÷ sentence length.
+     Rewards sentences where a topic word is prominent.
+   - **IDF** (inverse document frequency): `log(total_sentences / df) + 1`.
+     Penalizes tokens that appear in nearly every sentence (function words like
+     的 / the / は) and rewards discriminative content words.
+   - Final score = Σ (TF × IDF) ÷ unique_token_count.
+     Normalization prevents long sentences with many distinct tokens from
+     dominating simply due to vocabulary size.
+4. Sentences rich in high-TF-IDF tokens score higher — they carry the
+   document's distinctive subject matter rather than generic filler.
 
-This works without dictionaries or pre-trained models.
+This works without dictionaries, pre-trained models, or external NLP
+dependencies.
 
 #### Length Score (weight 0.2)
 
@@ -118,21 +137,62 @@ This works without dictionaries or pre-trained models.
 | 150–200 chars | 0.60 | Getting verbose |
 | > 200 chars | 0.30 | Overly dense |
 
-### 3. Greedy Selection
+### 3. Sentence Selection
 
-Sort all sentences by composite score (descending). Pick sentences one by one
-until the cumulative character count reaches `max_chars`.
+Two selection strategies are available via the `selection_method` parameter:
+
+#### Greedy Selection (`selection_method = "greedy"`)
+
+Simple top-score selection — sentences are sorted by composite score
+descending and added until the character budget is exhausted.
+
+- **Speed**: O(n log n) — fast path for large documents or when diversity
+  is not critical.
+- **Trade-off**: May select multiple sentences covering the same topic,
+  producing a more repetitive summary.
+
+#### MMR Selection (`selection_method = "mmr"`, default)
+
+Maximal Marginal Relevance balances relevance with diversity:
+
+```
+MMR = λ × relevance + (1 - λ) × diversity
+```
+
+- **Relevance**: the sentence's composite score (position + keyword + length).
+- **Diversity**: `1 - max_overlap_ratio` with already-selected sentences,
+  measured by token overlap.
+- **λ (lambda)**: configurable via `mmr_lambda` parameter (default 0.7,
+  favoring relevance moderately). Set to 1.0 for pure relevance (equivalent
+  to greedy), or 0.0 for pure diversity.
+- **Speed**: O(n²) — slower but produces a more informative, less redundant
+  summary.
+
+This prevents selecting multiple sentences that say the same thing, producing
+a more informative and less redundant summary.
 
 ### 4. Positional Reordering
 
 Selected sentences are re-sorted by their original order in the text, so the
 output remains coherent and readable.
 
+### 5. Boundary-Aware Fallback Truncation
+
+If no individual sentence fits within `max_chars` (e.g., the input is one
+giant paragraph), the algorithm falls back to **boundary-aware truncation**:
+
+1. Find the last sentence-ending punctuation within the budget (keeping at
+   least 50% of the text).
+2. If no punctuation is found, truncate at the last whitespace boundary.
+3. Last resort: hard truncation with an ellipsis (`...`) indicator.
+
+This ensures the output never ends mid-word or mid-sentence when possible.
+
 ### Complexity
 
 | Metric | Value |
 |---|---|
-| Time | O(n log n), where n = number of sentences |
+| Time | O(n²) for MMR selection, O(n log n) for scoring, where n = number of sentences |
 | Space | O(n) |
 | Dependencies | None (Python stdlib only) |
 

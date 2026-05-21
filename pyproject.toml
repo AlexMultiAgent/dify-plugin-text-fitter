@@ -1,6 +1,6 @@
 [project]
 name = "text-fitter"
-version = "0.1.0"
+version = "0.0.1"
 description = "Dify plugin for smart text trimming to fit context windows"
 readme = "README.md"
 requires-python = ">=3.12"

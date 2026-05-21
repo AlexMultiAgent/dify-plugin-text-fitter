@@ -15,7 +15,9 @@ description:
   llm: >
     A tool that checks whether the input text exceeds a configurable character
     limit. If it does, intelligently extracts the most important sentences
-    (extractive summarization). Supports Chinese, Japanese, and English text.
+    using extractive summarization with MMR diversity penalty to reduce
+    redundancy. Handles abbreviations (Mr., Dr. etc.) and CJK/English
+    punctuation correctly. Supports Chinese, Japanese, and English text.
     Outputs the processed text plus metadata: original_char_count,
     processed_char_count, and was_trimmed.
 extra:
@@ -63,12 +65,69 @@ parameters:
         LLMの実際のコンテキストウィンドウに基づいて設定してください。
     llm_description: Maximum allowed character count before trimming is triggered.
     form: llm
+  - name: selection_method
+    type: string
+    required: false
+    default: greedy
+    label:
+      en_US: Selection Method
+      zh_Hans: 选择算法
+      ja_JP: 選択アルゴリズム
+    human_description:
+      en_US: >
+        Sentence selection algorithm. "greedy" picks top-scoring sentences
+        (fast, O(n log n)). "mmr" adds a diversity penalty to reduce redundant
+        content (slower, O(n²)). Default "mmr".
+      zh_Hans: >
+        句子选择算法。"greedy"按分数从高到低选取（快速），
+        "mmr"增加多样性惩罚以减少冗余内容（较慢）。默认"mmr"。
+      ja_JP: >
+        文選択アルゴリズム。"greedy"はスコア順に選択（高速）、
+        "mmr"は多様性ペナルティで冗長性を低減（低速）。デフォルト"mmr"。
+    llm_description: >
+      Sentence selection algorithm: "greedy" (fast, top-score only) or "mmr"
+      (adds diversity penalty to reduce redundancy). Default "mmr".
+    options:
+      - value: "greedy"
+        label:
+          en_US: Greedy (Fast)
+          zh_Hans: 贪心（快速）
+          ja_JP: 貪欲（高速）
+      - value: "mmr"
+        label:
+          en_US: MMR (Diverse)
+          zh_Hans: MMR（多样）
+          ja_JP: MMR（多様）
+    form: form
+  - name: mmr_lambda
+    type: number
+    required: false
+    default: 0.7
+    min: 0
+    max: 1
+    label:
+      en_US: MMR Lambda
+      zh_Hans: MMR多样性权重
+      ja_JP: MMR多様性重み
+    human_description:
+      en_US: >
+        Relevance vs. diversity balance for MMR selection. 0 = pure diversity
+        (maximum variation), 1 = pure relevance (same as greedy). Default 0.7.
+        Only applies when selection_method is "mmr".
+      zh_Hans: >
+        MMR选择的相关性与多样性平衡。0=纯多样性，1=纯相关性（同贪心）。
+        默认0.7。仅在selection_method为"mmr"时生效。
+      ja_JP: >
+        MMR選択の関連性と多様性のバランス。0=純粋な多様性、
+        1=純粋な関連性（貪欲と同じ）。デフォルト0.7。
+        selection_methodが"mmr"の場合のみ適用。
+    llm_description: >
+      MMR balance parameter (0=pure diversity, 1=pure relevance). Default 0.7.
+      Only used when selection_method is "mmr".
+    form: form
 output_schema:
   type: object
   properties:
-    processed_text:
-      type: string
-      description: The processed text (original or trimmed).
     original_char_count:
       type: number
       description: Character count of the original input text.

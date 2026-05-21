@@ -4,3 +4,4 @@ uv.lock
 *.pyc
 *.pyo
 .verification.dify.json
+_test_*.py
