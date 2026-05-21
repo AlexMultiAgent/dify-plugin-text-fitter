@@ -12,7 +12,7 @@ identity:
     zh_Hans: 为上下文窗口限制提供智能文本裁剪。
   icon: icon.svg
   tags:
-    - text-processing
-    - utility
+    - productivity
+    - utilities
 tools:
   - tools/smart_trim.yaml
