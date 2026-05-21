@@ -1,0 +1,18 @@
+extra:
+  python:
+    source: provider/text_fitter.py
+identity:
+  author: local
+  name: text_fitter
+  label:
+    en_US: Text Fitter
+    zh_Hans: 文本字数适配器
+  description:
+    en_US: Smart text trimming for context window constraints.
+    zh_Hans: 为上下文窗口限制提供智能文本裁剪。
+  icon: icon.svg
+  tags:
+    - text-processing
+    - utility
+tools:
+  - tools/smart_trim.yaml

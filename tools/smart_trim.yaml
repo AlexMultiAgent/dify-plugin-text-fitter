@@ -1,0 +1,71 @@
+description:
+  human:
+    en_US: >
+      Calculates text length and ensures it fits within a configurable character
+      limit. If the text exceeds the limit, intelligently extracts the most
+      important sentences (extractive summarization). Otherwise, passes the text
+      through unchanged. Use this when downstream LLMs have constrained context
+      windows (e.g. locally deployed models).
+    zh_Hans: >
+      计算文本长度，确保其不超出可配置的字符限制。如果文本超限，
+      智能提取最重要的句子（抽取式摘要）；未超限则直接透传原文。
+      适用于下游LLM上下文窗口受限的场景（如本地部署模型）。
+  llm: >
+    A tool that checks whether the input text exceeds a character limit. If it
+    does, it intelligently extracts the most important sentences to reduce the
+    length. If not, it returns the original text unchanged. Outputs the processed
+    text along with original_char_count, processed_char_count, and was_trimmed
+    variables.
+extra:
+  python:
+    source: tools/smart_trim.py
+identity:
+  author: local
+  name: smart_trim
+  label:
+    en_US: Smart Trim
+    zh_Hans: 智能裁剪
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Input Text
+      zh_Hans: 输入文本
+    human_description:
+      en_US: The text to be checked and trimmed.
+      zh_Hans: 需要检查和裁剪的文本。
+    llm_description: The text content to be checked and processed.
+    form: llm
+  - name: max_chars
+    type: number
+    required: true
+    default: 30000
+    label:
+      en_US: Maximum Characters
+      zh_Hans: 最大字符数
+    human_description:
+      en_US: >
+        The character limit. Text exceeding this will be intelligently trimmed
+        down. Set this based on your LLM's actual context window (e.g. vllm
+        --max-model-len 25000 means ~25000 tokens, so set conservatively).
+      zh_Hans: >
+        字符数阈值。超过此限制的文本将被智能裁剪。请根据LLM实际上下文窗口设置
+        （如 vllm --max-model-len 25000 表示约25000 tokens，需保守设置）。
+    llm_description: Maximum allowed character count before trimming is triggered.
+    form: llm
+output_schema:
+  type: object
+  properties:
+    processed_text:
+      type: string
+      description: The processed text (original or trimmed).
+    original_char_count:
+      type: number
+      description: Character count of the original input text.
+    processed_char_count:
+      type: number
+      description: Character count of the output text.
+    was_trimmed:
+      type: boolean
+      description: Whether the text was trimmed (true if original exceeded max_chars).
