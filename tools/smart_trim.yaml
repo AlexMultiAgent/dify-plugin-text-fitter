@@ -68,25 +68,25 @@ parameters:
   - name: method
     type: select
     required: false
-    default: greedy
+    default: mmr
     label:
       en_US: Method
       zh_Hans: 算法
       ja_JP: アルゴリズム
     human_description:
       en_US: >
-        "greedy" picks top-scoring sentences (fast, O(n log n)).
         "mmr" adds a diversity penalty to reduce redundant content
-        (slower, O(n²)). Default "greedy".
+        (slower, O(n²)). "greedy" picks top-scoring sentences (fast,
+        O(n log n)). Default "mmr".
       zh_Hans: >
-        "greedy"按分数从高到低选取（快速），
-        "mmr"增加多样性惩罚以减少冗余内容（较慢）。默认"greedy"。
+        "mmr"增加多样性惩罚以减少冗余内容（较慢），
+        "greedy"按分数从高到低选取（快速）。默认"mmr"。
       ja_JP: >
-        "greedy"はスコア順に選択（高速）、
-        "mmr"は多様性ペナルティで冗長性を低減（低速）。デフォルト"greedy"。
+        "mmr"は多様性ペナルティで冗長性を低減（低速）、
+        "greedy"はスコア順に選択（高速）。デフォルト"mmr"。
     llm_description: >
-      "greedy" (fast, top-score only) or "mmr" (adds diversity penalty
-      to reduce redundancy). Default "greedy".
+      "mmr" (adds diversity penalty to reduce redundancy) or "greedy"
+      (fast, top-score only). Default "mmr".
     options:
       - value: greedy
         label:

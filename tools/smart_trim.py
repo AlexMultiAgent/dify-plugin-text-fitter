@@ -37,7 +37,7 @@ class SmartTrimTool(Tool):
         if max_chars <= 0:
             max_chars = 30000
 
-        method = tool_parameters.get("method", "greedy")
+        method = tool_parameters.get("method", "mmr")
         if method not in ("greedy", "mmr"):
             method = "greedy"
         try:
