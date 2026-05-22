@@ -4,4 +4,6 @@ uv.lock
 *.pyc
 *.pyo
 .verification.dify.json
+*.difypkg
+cookies.txt
 _test_*.py
