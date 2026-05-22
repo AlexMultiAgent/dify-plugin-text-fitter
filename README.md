@@ -40,24 +40,41 @@ informative sentences — before the text ever reaches the LLM.
 
 ### Choosing max_chars
 
-Note that `max_chars` counts **characters**, while model context limits
-(`--max-model-len`) are measured in **tokens** — they are different units.
-The approximate tokens consumed per character varies by language:
+`max_chars` is a **character count** threshold. The plugin simply checks
+`len(input)`: if the character count exceeds `max_chars`, it trims the text;
+otherwise it passes through unchanged. It does NOT measure tokens or know
+anything about your model's tokenizer.
 
-| Language | Tokens per character |
-|---|---|
-| English | ~0.25 (1 token ≈ 4 characters) |
-| Chinese | ~1.4 |
-| Japanese | ~1.2 |
+To pick a value, translate your target token budget into a character limit
+based on your primary input language. The ratios below are based on the
+**Qwen3 tokenizer** (BBPE, 151K vocab) — representative of modern Chinese
+LLM tokenizers:
 
-A conservative starting point: set `max_chars` to ~80% of your model's token
-limit. For example, with `--max-model-len 25000`:
+| Language | Tokens per char | How many chars fit in 20K tokens |
+| --- | --- | --- |
+| English | ~0.25 (1 token ≈ 4 chars) | ~80,000 |
+| Chinese | ~0.6 (1 token ≈ 1.7 chars) | ~33,000 |
+| Japanese | ~0.8 (1 token ≈ 1.3 chars) | ~25,000 |
 
-- English text: try `max_chars: 80000` (100K chars ≈ 25K tokens).
-- Chinese text: try `max_chars: 14000` (14K chars ≈ 20K tokens).
-- Japanese text: try `max_chars: 17000` (17K chars ≈ 20K tokens).
+> **Note:** Token-to-character ratios vary across model families. The table
+> above reflects Qwen3 (BBPE, 151K vocab). GPT-4 class tokenizers (cl100k)
+> consume ~1.1 tokens per Chinese character — nearly 2× more. Always verify
+> with your specific model's tokenizer when precise budgeting is critical.
+>
+> Sources: Qwen3 Technical Report (arXiv:2505.09388, 2025); TokLens
+> (ACL 2026 SRW).
 
-Adjust based on observed behavior with your specific workload.
+For a model with `--max-model-len 25000` (25K tokens), reserving ~80% (~20K
+tokens) for input text is recommended — the remaining ~20% (~5K tokens) should
+be kept for the LLM node's prompt template, instructions, and output generation.
+At this budget:
+
+- English → `max_chars: 80000`
+- Chinese → `max_chars: 33000`
+- Japanese → `max_chars: 25000`
+
+Choose a value that suits your expected input, then adjust after observing
+actual behavior.
 
 ## Parameters
 
