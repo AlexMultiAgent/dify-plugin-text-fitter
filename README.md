@@ -40,10 +40,24 @@ informative sentences — before the text ever reaches the LLM.
 
 ### Choosing max_chars
 
-A conservative rule of thumb: set `max_chars` to ~80% of the token limit for
-your model. For example, if your serving parameters specify
-`--max-model-len 25000`, try `max_chars: 20000` as a starting point. Adjust
-based on observed behavior with your specific workload.
+Note that `max_chars` counts **characters**, while model context limits
+(`--max-model-len`) are measured in **tokens** — they are different units.
+The approximate tokens consumed per character varies by language:
+
+| Language | Tokens per character |
+|---|---|
+| English | ~0.25 (1 token ≈ 4 characters) |
+| Chinese | ~1.4 |
+| Japanese | ~1.2 |
+
+A conservative starting point: set `max_chars` to ~80% of your model's token
+limit. For example, with `--max-model-len 25000`:
+
+- English text: try `max_chars: 80000` (100K chars ≈ 25K tokens).
+- Chinese text: try `max_chars: 14000` (14K chars ≈ 20K tokens).
+- Japanese text: try `max_chars: 17000` (17K chars ≈ 20K tokens).
+
+Adjust based on observed behavior with your specific workload.
 
 ## Parameters
 
