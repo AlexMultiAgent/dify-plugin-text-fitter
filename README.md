@@ -22,7 +22,7 @@ informative sentences — before the text ever reaches the LLM.
 
 1. In your Dify workspace, go to **Plugins** → **Marketplace**.
 2. Search for **Text Fitter** and click **Install**.
-3. The plugin will appear in your workflow tools as **Smart Trim** (智能撷取 / スマートトリム).
+3. The plugin will appear in your workflow tools as **Smart Trim**.
 
 ### Manual Installation
 
@@ -163,10 +163,10 @@ selections across sections:
 
 | Original chars | ~Sentences | Compression | MMR quality |
 | --- | --- | --- | --- |
-| 6–9 万 | 1,000–1,500 | 2–3× | Very good — ample room for topical coverage |
-| 9–15 万 | 1,500–2,500 | 3–5× | Good — each section gets representative sentences |
-| 15–25 万 | 2,500–4,000 | 5–8× | Marginal — important passages may be skipped |
-| 25 万+ | 4,000+ | 8×+ | Poor — heavy information loss across the board |
+| 60K–90K | 1,000–1,500 | 2–3× | Very good — ample room for topical coverage |
+| 90K–150K | 1,500–2,500 | 3–5× | Good — each section gets representative sentences |
+| 150K–250K | 2,500–4,000 | 5–8× | Marginal — important passages may be skipped |
+| 250K+ | 4,000+ | 8×+ | Poor — heavy information loss across the board |
 
 When compression exceeds 5×, consider pre-processing the document (e.g.,
 removing boilerplate sections). LLM-based summarization can synthesize across
@@ -215,7 +215,7 @@ score = 0.3 × position + 0.5 × keyword_density + 0.2 × length
 - **Position Score (0.3):** Intro (first 20%) and conclusion (last 10%) weighted
   higher; middle sections decay linearly.
 - **Keyword Density (0.5):** Normalized TF-IDF. Tokens rare across the document
-  get higher weight; function words (的/the/は) that appear everywhere are
+  get higher weight; frequent function words that appear everywhere are
   naturally downweighted.
 - **Length Score (0.2):** Penalizes very short (< 10 chars, likely filler) and
   very long (> 200 chars, likely verbose) sentences. Sweet spot: 20–150 chars.
