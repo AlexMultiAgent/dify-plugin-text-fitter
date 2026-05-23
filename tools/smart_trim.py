@@ -19,13 +19,13 @@ class SmartTrimTool(Tool):
             import traceback
             exc = traceback.format_exc()
             print(exc, file=sys.stderr, flush=True)
-            yield self.create_text_message(
-                tool_parameters.get("text") or ""
-            )
-            yield self.create_variable_message("original_char_count", 0)
-            yield self.create_variable_message("processed_char_count", 0)
-            yield self.create_variable_message("was_trimmed", False)
-            yield self.create_variable_message("algorithm", "passthrough")
+            yield self.create_json_message({
+                "text": tool_parameters.get("text") or "",
+                "original_char_count": 0,
+                "processed_char_count": 0,
+                "was_trimmed": False,
+                "algorithm": "passthrough",
+            })
 
     def _do_invoke(
         self, tool_parameters: dict[str, Any]
@@ -53,11 +53,13 @@ class SmartTrimTool(Tool):
         original_length = len(text)
 
         if original_length <= max_chars:
-            yield self.create_text_message(text)
-            yield self.create_variable_message("original_char_count", original_length)
-            yield self.create_variable_message("processed_char_count", original_length)
-            yield self.create_variable_message("was_trimmed", False)
-            yield self.create_variable_message("algorithm", "passthrough")
+            yield self.create_json_message({
+                "text": text,
+                "original_char_count": original_length,
+                "processed_char_count": original_length,
+                "was_trimmed": False,
+                "algorithm": "passthrough",
+            })
             return
 
         processed_text, algorithm = _extract_key_sentences(
@@ -67,11 +69,13 @@ class SmartTrimTool(Tool):
         )
         processed_length = len(processed_text)
 
-        yield self.create_text_message(processed_text)
-        yield self.create_variable_message("original_char_count", original_length)
-        yield self.create_variable_message("processed_char_count", processed_length)
-        yield self.create_variable_message("was_trimmed", True)
-        yield self.create_variable_message("algorithm", algorithm)
+        yield self.create_json_message({
+            "text": processed_text,
+            "original_char_count": original_length,
+            "processed_char_count": processed_length,
+            "was_trimmed": True,
+            "algorithm": algorithm,
+        })
 
 
 # Maximum number of sentences to run MMR on directly. For larger documents,
