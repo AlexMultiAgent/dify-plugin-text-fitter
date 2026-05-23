@@ -40,10 +40,9 @@ informative sentences — before the text ever reaches the LLM.
 
 ### Choosing max_chars
 
-`max_chars` is a **character count** threshold. The plugin simply checks
-`len(input)`: if the character count exceeds `max_chars`, it trims the text;
-otherwise it passes through unchanged. It does NOT measure tokens or know
-anything about your model's tokenizer.
+`max_chars` is a **character count** threshold — the plugin checks `len(input)`
+against it. If the count exceeds `max_chars`, the text is trimmed; otherwise it
+passes through unchanged. It does not measure tokens.
 
 To pick a value, translate your target token budget into a character limit
 based on your primary input language. The ratios below are based on the
@@ -97,8 +96,8 @@ actual behavior.
 
 ## Language Support
 
-The tool automatically handles **Chinese**, **Japanese**, and **English** text
-without any language selector parameter. The tokenizer recognizes:
+The tool automatically handles **Chinese**, **Japanese**, and **English** text.
+The tokenizer recognizes:
 
 - **CJK Unified Ideographs** (U+4E00–U+9FFF) — Chinese and Japanese kanji
 - **CJK Extension A** (U+3400–U+4DBF) — rare and historical characters
@@ -110,12 +109,84 @@ The sentence splitter handles CJK fullwidth punctuation (`。！？`),
 Japanese closing brackets (`」』`), English halfwidth punctuation (`. ! ?`),
 ellipsis (`...` / `……`), and common abbreviations (`Mr.`, `Dr.`, etc.).
 
+## Effectiveness & Boundaries
+
+This plugin is **not a replacement for LLM summarization**. It is designed
+for a specific scenario:
+
+> You need **original text** inside the LLM context window, but the document
+> is too long to fit. You want to cut redundant parts while preserving as
+> many diverse, information-rich **verbatim sentences** as possible.
+
+### Comparison with LLM Summarization
+
+| Aspect | Text Fitter (this plugin) | LLM Summarization |
+| --- | --- | --- |
+| **Output** | Original sentences, verbatim | Rewritten abstract |
+| **Fidelity** | High — no paraphrasing or hallucination risk | May introduce generalization errors |
+| **Coverage** | Limited to what existing sentences express | Can fuse information across sentences |
+| **Token cost** | Zero (runs before LLM) | Consumes input + output tokens |
+| **Context window** | No requirement — runs outside the LLM | Must fit the full document **plus** the summary output |
+| **Speed** | 1–3 seconds | Model-dependent (seconds to minutes) |
+| **Language** | Chinese / Japanese / English | Model-dependent |
+
+### When It Works Well
+
+- **Structured documents** (reports, papers, contracts) where key points are
+  concentrated in topic sentences
+- **Compression ratios up to 5×** — enough budget for the main points across
+  different sections
+- **Dialogue / transcripts** — removing filler and repeated ideas, keeping
+  the substantive turns
+
+### When It Doesn't
+
+- **Narrative / creative text** — information is spread across descriptions,
+  not concentrated in individual sentences
+- **Extreme compression** (10×+) — any extractive method will lose
+  significant content
+- **When you need synthesis** — this tool selects sentences; it cannot merge
+  or rephrase them
+
+### Practical Advice
+
+Give the plugin a generous budget — **70–80% of the LLM's effective context
+window**. The diversity mechanism (MMR) works best when it has room to cover
+different facets of the document. Overly tight budgets force it to pick only
+the highest-scoring sentences, which tend to be thematically similar.
+
+Extractive summarization has a practical ceiling of about **5× compression**
+before quality degrades noticeably. Beyond that, too few sentences remain to
+represent the full document. At the default `max_chars = 30000` (roughly 500–600
+Chinese sentences), the compression ratio determines how well MMR can distribute
+selections across sections:
+
+| Original chars | ~Sentences | Compression | MMR quality |
+| --- | --- | --- | --- |
+| 6–9 万 | 1,000–1,500 | 2–3× | Very good — ample room for topical coverage |
+| 9–15 万 | 1,500–2,500 | 3–5× | Good — each section gets representative sentences |
+| 15–25 万 | 2,500–4,000 | 5–8× | Marginal — important passages may be skipped |
+| 25 万+ | 4,000+ | 8×+ | Poor — heavy information loss across the board |
+
+When compression exceeds 5×, consider pre-processing the document (e.g.,
+removing boilerplate sections). LLM-based summarization can synthesize across
+sentences, but may incur additional cost (e.g., cloud API usage) for models with
+enough context window to process the full document.
+
+At the same time, the remaining 20–30% headroom is essential for the downstream
+workflow: the LLM node's prompt template, system instructions, and output
+tokens all consume the same context window. If `max_chars` occupies the entire
+window, the combined length of prompt + trimmed text + generated response will
+still exceed the model's limit and cause a context-length error. The plugin
+only controls the input text portion — it cannot see or account for the rest
+of the pipeline.
+
 ## Algorithm
 
-This plugin uses **extractive summarization** — no external NLP dependencies,
-pure Python standard library. The algorithm operates on complete sentences:
-it selects a subset of sentences from the original text; it never rewrites,
-paraphrases, or cuts mid-sentence (outside the boundary-aware fallback).
+This plugin uses **extractive summarization** — pure Python standard library,
+no external NLP dependencies. It selects complete sentences from the original
+text; it never rewrites, paraphrases, or cuts mid-sentence (outside the
+boundary-aware fallback).
 
 ### Pipeline
 
@@ -185,9 +256,6 @@ variant was actually used:
 | `mmr_prefilter` | method = `"mmr"`, > 5000 sentences | Score-ranked pre-filter to top 5000 candidates, then MMR |
 | `boundary_truncation` | emergency fallback | No sentence fits budget; cut at sentence/word boundary |
 
-The pre-filter cap ensures MMR never operates on more than 5000 candidates
-regardless of input size, bounding the worst-case runtime to a few seconds.
-
 ### 4. Positional Reordering
 
 Selected sentences are re-sorted by their original document order for
@@ -206,74 +274,6 @@ whitespace boundary → hard truncation with `...` ellipsis.
 | Worst-case time | O(k × n) for MMR, O(n log n) for Greedy (n = candidates, k = selected sentences) |
 | Space | O(n) |
 | Dependencies | None (Python stdlib only) |
-
-### Concrete Example
-
-Take an 8,000-sentence document compressed to ~2,000 sentences:
-
-| Stage | Greedy | MMR (+ Prefilter) |
-| --- | --- | --- |
-| Tokenize + score | ~8,000 ops | ~8,000 ops |
-| Sort | ~100K comparisons | ~100K comparisons |
-| Select | ~8,000 (single pass) | ~10M (2,000 rounds × 5,000 candidates × Jaccard) |
-| **Overall** | **~0.01 s** | **~0.5–2 s** |
-
-Both share the same scoring and sorting overhead. The gap comes from the
-selection phase: MMR recalculates per-candidate diversity against each newly
-selected sentence, while Greedy simply walks the sorted list once.
-
-## Effectiveness & Boundaries
-
-This plugin is **not a replacement for LLM summarization**. It is designed
-for a specific scenario:
-
-> You need **original text** inside the LLM context window, but the document
-> is too long to fit. You want to cut redundant parts while preserving as
-> many diverse, information-rich **verbatim sentences** as possible.
-
-### Comparison with LLM Summarization
-
-| Aspect | Text Fitter (this plugin) | LLM Summarization |
-| --- | --- | --- |
-| **Output** | Original sentences, verbatim | Rewritten abstract |
-| **Fidelity** | High — no paraphrasing or hallucination risk | May introduce generalization errors |
-| **Coverage** | Limited to what existing sentences express | Can fuse information across sentences |
-| **Token cost** | Zero (runs before LLM) | Consumes input + output tokens |
-| **Speed** | 1–3 seconds | Model-dependent (seconds to minutes) |
-| **Language** | Chinese / Japanese / English | Model-dependent |
-
-### When It Works Well
-
-- **Structured documents** (reports, papers, contracts) where key points are
-  concentrated in topic sentences
-- **Compression ratios up to 5×** — enough budget for the main points across
-  different sections
-- **Dialogue / transcripts** — removing filler and repeated ideas, keeping
-  the substantive turns
-
-### When It Doesn't
-
-- **Narrative / creative text** — information is spread across descriptions,
-  not concentrated in individual sentences
-- **Extreme compression** (10×+) — any extractive method will lose
-  significant content
-- **When you need synthesis** — this tool selects sentences; it cannot merge
-  or rephrase them
-
-### Practical Advice
-
-Give the plugin a generous budget — **70–80% of the LLM's effective context
-window**. The diversity mechanism (MMR) works best when it has room to cover
-different facets of the document. Overly tight budgets force it to pick only
-the highest-scoring sentences, which tend to be thematically similar.
-
-At the same time, the remaining 20–30% headroom is essential for the downstream
-workflow: the LLM node's prompt template, system instructions, and output
-tokens all consume the same context window. If `max_chars` occupies the entire
-window, the combined length of prompt + trimmed text + generated response will
-still exceed the model's limit and cause a context-length error. The plugin
-only controls the input text portion — it cannot see or account for the rest
-of the pipeline.
 
 ## Privacy
 
