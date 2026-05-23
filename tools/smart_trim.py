@@ -98,6 +98,7 @@ _ABBREVIATIONS = frozenset({
     "apt", "dept", "div", "est", "gov", "mil", "op", "ord", "pvt",
     "rep", "sen", "sgt", "capt", "cmdr", "lt", "col", "gen",
     "rev", "hon", "pres", "vp", "ceo", "cfo", "coo", "ct",
+    "fig", "eq", "approx", "esp",
 })
 
 
@@ -296,10 +297,13 @@ def _split_sentences(text: str) -> list[str]:
     Handles edge cases: decimal numbers (3.14), abbreviations (Mr.),
     ellipsis (... / ……), and CJK punctuation variants.
     """
-    # Protect abbreviations from being split: replace "Mr." period with a placeholder
-    # Pattern: known abbreviation (case-insensitive) followed by a period and space+capital
+    # Protect known abbreviations from being split by replacing their
+    # trailing period with a placeholder. The lookahead must cover the
+    # same character classes as the sentence-split regex below, otherwise
+    # an abbreviation followed by CJK/digit (e.g. "Dr. 张三") would still
+    # be split because the protection misses it but the split regex catches it.
     abbrev_pattern = re.compile(
-        r"\b(" + "|".join(_ABBREVIATIONS) + r")\.\s+(?=[A-Z])",
+        r"\b(" + "|".join(_ABBREVIATIONS) + r")\.\s+(?=[A-Z0-9一-鿿぀-ゟ゠-ヿ])",
         re.IGNORECASE,
     )
     text = abbrev_pattern.sub(lambda m: m.group(0).replace(".", "\x00"), text)
