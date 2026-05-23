@@ -30,4 +30,5 @@ Any changes to this privacy policy will be reflected in updated versions of this
 
 ## Contact
 
-For privacy-related inquiries, please file an issue on the plugin's GitHub repository.
+For privacy-related inquiries, please file an issue at:
+<https://github.com/AlexMultiAgent/dify-plugin-text-fitter/issues>

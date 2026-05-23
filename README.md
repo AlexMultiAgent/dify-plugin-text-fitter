@@ -22,7 +22,7 @@ informative sentences — before the text ever reaches the LLM.
 
 1. In your Dify workspace, go to **Plugins** → **Marketplace**.
 2. Search for **Text Fitter** and click **Install**.
-3. The plugin will appear in your workflow tools as **Smart Trim**.
+3. The plugin will appear in your workflow tools as **Smart Trim** (智能撷取 / スマートトリム).
 
 ### Manual Installation
 

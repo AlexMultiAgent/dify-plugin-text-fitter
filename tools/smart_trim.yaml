@@ -24,7 +24,7 @@ extra:
   python:
     source: tools/smart_trim.py
 identity:
-  author: alex
+  author: AlexMultiAgent
   name: smart_trim
   label:
     en_US: Smart Trim
