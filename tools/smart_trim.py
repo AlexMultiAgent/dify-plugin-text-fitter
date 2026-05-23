@@ -25,6 +25,7 @@ class SmartTrimTool(Tool):
             yield self.create_variable_message("original_char_count", 0)
             yield self.create_variable_message("processed_char_count", 0)
             yield self.create_variable_message("was_trimmed", False)
+            yield self.create_variable_message("algorithm", "passthrough")
 
     def _do_invoke(
         self, tool_parameters: dict[str, Any]
