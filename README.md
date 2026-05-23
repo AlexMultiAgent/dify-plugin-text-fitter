@@ -252,6 +252,14 @@ window**. The diversity mechanism (MMR) works best when it has room to cover
 different facets of the document. Overly tight budgets force it to pick only
 the highest-scoring sentences, which tend to be thematically similar.
 
+At the same time, the remaining 20–30% headroom is essential for the downstream
+workflow: the LLM node's prompt template, system instructions, and output
+tokens all consume the same context window. If `max_chars` occupies the entire
+window, the combined length of prompt + trimmed text + generated response will
+still exceed the model's limit and cause a context-length error. The plugin
+only controls the input text portion — it cannot see or account for the rest
+of the pipeline.
+
 ## Privacy
 
 This plugin processes all text locally. No data is transmitted to external

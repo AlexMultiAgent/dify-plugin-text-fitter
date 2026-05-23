@@ -28,7 +28,7 @@ identity:
   name: smart_trim
   label:
     en_US: Smart Trim
-    zh_Hans: 智能裁剪
+    zh_Hans: 智能撷取
     ja_JP: スマートトリム
 parameters:
   - name: text
