@@ -19,7 +19,7 @@ description:
     redundancy. Handles abbreviations (Mr., Dr. etc.) and CJK/English
     punctuation correctly. Supports Chinese, Japanese, and English text.
     Outputs the processed text plus metadata: original_char_count,
-    processed_char_count, and was_trimmed.
+    processed_char_count, was_trimmed, and algorithm.
 extra:
   python:
     source: tools/smart_trim.py
@@ -76,7 +76,7 @@ parameters:
     human_description:
       en_US: >
         "mmr" adds a diversity penalty to reduce redundant content
-        (slower, O(n²)). "greedy" picks top-scoring sentences (fast,
+        (slower, O(k×n)). "greedy" picks top-scoring sentences (fast,
         O(n log n)). Default "mmr".
       zh_Hans: >
         "mmr"增加多样性惩罚以减少冗余内容（较慢），
@@ -191,3 +191,12 @@ output_schema:
     was_trimmed:
       type: boolean
       description: Whether the text was trimmed (true if original exceeded max_chars).
+    algorithm:
+      type: string
+      description: >
+        Algorithm actually used for this invocation. One of:
+        "passthrough" (text within limit, no processing),
+        "greedy" (top-score sentence selection),
+        "mmr" (full MMR diversity-aware selection),
+        "mmr_prefilter" (MMR with pre-filtered top-5000 candidate pool),
+        "boundary_truncation" (fallback — cut at sentence/word boundary).

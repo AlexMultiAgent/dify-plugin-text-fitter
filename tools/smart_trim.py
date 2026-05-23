@@ -56,9 +56,10 @@ class SmartTrimTool(Tool):
             yield self.create_variable_message("original_char_count", original_length)
             yield self.create_variable_message("processed_char_count", original_length)
             yield self.create_variable_message("was_trimmed", False)
+            yield self.create_variable_message("algorithm", "passthrough")
             return
 
-        processed_text = _extract_key_sentences(
+        processed_text, algorithm = _extract_key_sentences(
             text, max_chars,
             method=method,
             diversity=diversity,
@@ -69,7 +70,21 @@ class SmartTrimTool(Tool):
         yield self.create_variable_message("original_char_count", original_length)
         yield self.create_variable_message("processed_char_count", processed_length)
         yield self.create_variable_message("was_trimmed", True)
+        yield self.create_variable_message("algorithm", algorithm)
 
+
+# Maximum number of sentences to run MMR on directly. For larger documents,
+# candidates are pre-filtered to this cap by score before MMR selection.
+# With incremental overlap tracking, MMR is O(k×n) per selection round.
+# Full MMR is safe up to this threshold; beyond it, candidates are
+# pre-filtered to _MMR_CANDIDATE_CAP by score before running MMR.
+_MMR_FULL_LIMIT = 5000
+
+# Pre-filter target size: when the document exceeds _MMR_FULL_LIMIT
+# sentences, only the top-scoring _MMR_CANDIDATE_CAP candidates are
+# passed to MMR.  This bounds the MMR inner loop to a fixed budget
+# regardless of input size.
+_MMR_CANDIDATE_CAP = 5000
 
 # Common English abbreviations that should NOT be treated as sentence boundaries.
 _ABBREVIATIONS = frozenset({
@@ -86,7 +101,7 @@ def _extract_key_sentences(
     max_chars: int,
     method: str = "greedy",
     diversity: float = 0.7,
-) -> str:
+) -> tuple[str, str]:
     """Extract the most important sentences from text to fit within max_chars.
 
     Supports Chinese, Japanese, and English text.
@@ -97,27 +112,54 @@ def _extract_key_sentences(
     3. Select top-scoring sentences (greedy or MMR diversity-aware)
     4. Reorder selected sentences by original position for coherence
     5. If no sentence fits the budget, fall back to boundary-aware truncation
+
+    Returns:
+        (processed_text, algorithm_name) where algorithm_name is one of
+        "greedy", "mmr", "mmr_prefilter", or "boundary_truncation".
     """
     sentences = _split_sentences(text)
     if not sentences:
-        return _boundary_aware_truncate(text, max_chars)
+        return _boundary_aware_truncate(text, max_chars), "boundary_truncation"
 
     total_sentences = len(sentences)
     scores, sentence_tokens = _score_sentences(sentences, total_sentences)
 
     if method == "greedy":
         selected_indices = _greedy_select(sentences, scores, max_chars)
+        algorithm = "greedy"
     else:
-        # MMR-style selection balancing relevance with diversity
-        selected_indices = _mmr_select(
-            sentences, scores, sentence_tokens, max_chars, diversity,
-        )
+        if len(sentences) > _MMR_FULL_LIMIT:
+            # Pre-filter to a fixed-size candidate pool before MMR.
+            # The pre-filter uses the same scores, so only the
+            # diversity penalty is computed on the reduced set.
+            ranked = sorted(
+                enumerate(scores), key=lambda x: x[1], reverse=True
+            )
+            kept = set(i for i, _ in ranked[:_MMR_CANDIDATE_CAP])
+            filtered_sentences = [s for i, s in enumerate(sentences) if i in kept]
+            filtered_scores = [s for i, s in enumerate(scores) if i in kept]
+            filtered_tokens = [
+                t for i, t in enumerate(sentence_tokens) if i in kept
+            ]
+            selected_indices = _mmr_select(
+                filtered_sentences, filtered_scores, filtered_tokens,
+                max_chars, diversity,
+            )
+            # Map back to original indices for position-based reordering
+            kept_list = sorted(kept)
+            selected_indices = [kept_list[i] for i in selected_indices]
+            algorithm = "mmr_prefilter"
+        else:
+            selected_indices = _mmr_select(
+                sentences, scores, sentence_tokens, max_chars, diversity,
+            )
+            algorithm = "mmr"
 
     if not selected_indices:
-        return _boundary_aware_truncate(text, max_chars)
+        return _boundary_aware_truncate(text, max_chars), "boundary_truncation"
 
     selected_indices.sort()
-    return "".join(sentences[i] for i in selected_indices)
+    return "".join(sentences[i] for i in selected_indices), algorithm
 
 
 def _greedy_select(
@@ -152,58 +194,47 @@ def _mmr_select(
     """Select sentences using Maximal Marginal Relevance (MMR).
 
     Balances relevance (high score) with diversity (low overlap with
-    already-selected sentences). This reduces redundant content in the
-    output summary.
-
-    Args:
-        sentences: List of sentence strings.
-        scores: Composite scores for each sentence.
-        max_chars: Character budget.
-        lambda_mmr: Relevance vs. diversity trade-off (0 = pure diversity,
-            1 = pure relevance). Default 0.7 favors relevance moderately.
-
-    Returns:
-        List of selected sentence indices (unordered).
+    already-selected sentences). Tracks per-candidate max_overlap incrementally
+    so each selection round is O(n) instead of O(n*k), yielding O(n*k) overall.
     """
+    n = len(sentences)
+    # Pre-compute token sets once — avoid repeated set() calls in inner loops
+    sent_token_sets: list[set[str]] = [set(t) for t in sentence_tokens]
+
     selected_indices: list[int] = []
-    selected_tokens: list[set[str]] = []
     total_chars = 0
-    remaining = set(range(len(sentences)))
+    remaining: dict[int, float] = {}  # idx -> current mmr score
+
+    # Per-candidate max overlap with any selected sentence (incrementally updated)
+    max_overlap: list[float] = [0.0] * n
+
+    # Initialize — only include sentences that individually fit the budget
+    for i, sent in enumerate(sentences):
+        if len(sent) <= max_chars:
+            remaining[i] = lambda_mmr * scores[i] + (1.0 - lambda_mmr) * 1.0
 
     while remaining:
-        best_idx = -1
-        best_mmr = -float("inf")
+        # Pick the candidate with the highest current MMR score
+        best_idx = max(remaining, key=remaining.get)
+        sent_len = len(sentences[best_idx])
 
-        for idx in remaining:
-            sent_len = len(sentences[idx])
-            if total_chars + sent_len > max_chars:
-                continue
-
-            relevance = scores[idx]
-
-            # Diversity: penalize overlap with already-selected sentences
-            if selected_tokens:
-                max_overlap = max(
-                    _token_overlap_ratio(sentence_tokens[idx], st)
-                    for st in selected_tokens
-                )
-                diversity = 1.0 - max_overlap
-            else:
-                diversity = 1.0  # No penalty for the first selection
-
-            mmr = lambda_mmr * relevance + (1.0 - lambda_mmr) * diversity
-
-            if mmr > best_mmr:
-                best_mmr = mmr
-                best_idx = idx
-
-        if best_idx == -1:
-            break  # No more sentences fit the budget
+        if total_chars + sent_len > max_chars:
+            del remaining[best_idx]
+            continue
 
         selected_indices.append(best_idx)
-        selected_tokens.append(set(sentence_tokens[best_idx]))
-        total_chars += len(sentences[best_idx])
-        remaining.discard(best_idx)
+        total_chars += sent_len
+        newly_selected = sent_token_sets[best_idx]
+        del remaining[best_idx]
+
+        # Update diversity penalty incrementally — only compare with the
+        # newly-selected sentence instead of all previously-selected ones
+        for idx in list(remaining):
+            overlap = _token_overlap_ratio(sentence_tokens[idx], newly_selected)
+            if overlap > max_overlap[idx]:
+                max_overlap[idx] = overlap
+            diversity = 1.0 - max_overlap[idx]
+            remaining[idx] = lambda_mmr * scores[idx] + (1.0 - lambda_mmr) * diversity
 
     return selected_indices
 

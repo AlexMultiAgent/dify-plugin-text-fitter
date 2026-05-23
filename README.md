@@ -82,7 +82,7 @@ actual behavior.
 |---|---|---|---|---|
 | `text` | string | Yes | — | Input text to process |
 | `max_chars` | number | Yes | 30000 | Character threshold; exceeding triggers trimming |
-| `method` | select | No | `mmr` | Sentence selection: `"mmr"` (diverse, O(n²)) or `"greedy"` (fast, O(n log n)) |
+| `method` | select | No | `mmr` | Sentence selection: `"mmr"` (diverse, O(k×n)) or `"greedy"` (fast, O(n log n)) |
 | `mmr_lambda` | select | No | `0.7` | MMR λ (relevance weight). 11 options from `0.0` (Pure Diversity) to `1.0` (Pure Relevance). Ignored when `method` is `"greedy"` |
 
 ## Outputs
@@ -93,6 +93,7 @@ actual behavior.
 | `original_char_count` | number | Character count of the original input text |
 | `processed_char_count` | number | Character count of the output text |
 | `was_trimmed` | boolean | Whether the text was trimmed (true if original exceeded max_chars) |
+| `algorithm` | string | Algorithm actually used. See [Algorithm](#algorithm) for details |
 
 ## Language Support
 
@@ -112,12 +113,27 @@ ellipsis (`...` / `……`), and common abbreviations (`Mr.`, `Dr.`, etc.).
 ## Algorithm
 
 This plugin uses **extractive summarization** — no external NLP dependencies,
-pure Python standard library.
+pure Python standard library. The algorithm operates on complete sentences:
+it selects a subset of sentences from the original text; it never rewrites,
+paraphrases, or cuts mid-sentence (outside the boundary-aware fallback).
+
+### Pipeline
+
+```
+Input text → Sentence Split → Score → Select → Reorder by position → Output
+```
 
 ### 1. Sentence Segmentation
 
 Regex-based sentence splitting aware of CJK, Japanese, and English
-punctuation conventions, with abbreviation protection.
+punctuation conventions, with abbreviation protection for 40+ common
+abbreviations (`Mr.`, `Dr.`, `Inc.`, etc.).
+
+| Language | Sentence-ending markers |
+|---|---|
+| Chinese | `。！？` |
+| Japanese | `。！？」』` |
+| English | `. ! ?` followed by uppercase or CJK character |
 
 ### 2. Sentence Scoring
 
@@ -125,37 +141,116 @@ punctuation conventions, with abbreviation protection.
 score = 0.3 × position + 0.5 × keyword_density + 0.2 × length
 ```
 
-- **Position Score (0.3):** Intro and conclusion sentences weighted higher.
-- **Keyword Density (0.5):** Normalized TF-IDF analysis, penalizing
-  function words (的/the/は) that appear across documents.
-- **Length Score (0.2):** Penalizes very short (< 10 chars, likely filler)
-  and very long (> 200 chars, likely verbose) sentences.
+- **Position Score (0.3):** Intro (first 20%) and conclusion (last 10%) weighted
+  higher; middle sections decay linearly.
+- **Keyword Density (0.5):** Normalized TF-IDF. Tokens rare across the document
+  get higher weight; function words (的/the/は) that appear everywhere are
+  naturally downweighted.
+- **Length Score (0.2):** Penalizes very short (< 10 chars, likely filler) and
+  very long (> 200 chars, likely verbose) sentences. Sweet spot: 20–150 chars.
 
 ### 3. Sentence Selection
 
 Two strategies via the `method` parameter:
 
-- **Greedy** (`method = "greedy"`): Top-score selection, O(n log n). Fast.
-- **MMR** (`method = "mmr"`): Maximal Marginal Relevance balancing
-  relevance with diversity: `MMR = λ × relevance + (1 - λ) × diversity`.
-  O(n²), but produces less redundant summaries.
+**Greedy** — Sort sentences by score descending, pick top ones until the
+character budget is exhausted. O(n log n). Fast and predictable.
+
+**MMR (Maximal Marginal Relevance)** — Iteratively selects sentences that
+maximize:
+
+```
+MMR = λ × relevance_score + (1 - λ) × (1 − max_token_overlap_with_selected)
+```
+
+where λ (`mmr_lambda`) controls the relevance–diversity trade-off:
+
+- λ = 1.0 → pure relevance (same behavior as Greedy)
+- λ = 0.7 → moderately favors relevance (default, recommended)
+- λ = 0.0 → pure diversity (maximum topical variation)
+
+Diversity is measured as token overlap (Jaccard-like) between candidate and
+already-selected sentences. Tracking is incremental — each candidate's max
+overlap is updated against only the newly-selected sentence per round, giving
+O(k × n) overall complexity.
+
+**Performance guardrails** — The `algorithm` output variable records which
+variant was actually used:
+
+| `algorithm` value | Trigger | Behavior |
+|---|---|---|
+| `passthrough` | text ≤ max_chars | No processing; return original text |
+| `greedy` | method = `"greedy"` | Pure score-ranked selection |
+| `mmr` | method = `"mmr"`, ≤ 5000 sentences | Full MMR on all sentences |
+| `mmr_prefilter` | method = `"mmr"`, > 5000 sentences | Score-ranked pre-filter to top 5000 candidates, then MMR |
+| `boundary_truncation` | emergency fallback | No sentence fits budget; cut at sentence/word boundary |
+
+The pre-filter cap ensures MMR never operates on more than 5000 candidates
+regardless of input size, bounding the worst-case runtime to a few seconds.
 
 ### 4. Positional Reordering
 
-Selected sentences are re-sorted by original order for coherent output.
+Selected sentences are re-sorted by their original document order for
+coherent, readable output.
 
 ### 5. Boundary-Aware Fallback
 
-If no sentence fits within `max_chars`, falls back to sentence-boundary
-truncation, then whitespace, then hard truncation with ellipsis.
+Triggered only when no sentence fits within `max_chars` (e.g., every sentence
+is individually longer than the budget). Tries: sentence-ending punctuation →
+whitespace boundary → hard truncation with `...` ellipsis.
 
 ### Complexity
 
 | Metric | Value |
 |---|---|
-| Time | O(n²) for MMR, O(n log n) for greedy (n = number of sentences) |
+| Worst-case time | O(k × n) for MMR, O(n log n) for Greedy (n = candidates, k = selected sentences) |
 | Space | O(n) |
 | Dependencies | None (Python stdlib only) |
+
+## Effectiveness & Boundaries
+
+This plugin is **not a replacement for LLM summarization**. It is designed
+for a specific scenario:
+
+> You need **original text** inside the LLM context window, but the document
+> is too long to fit. You want to cut redundant parts while preserving as
+> many diverse, information-rich **verbatim sentences** as possible.
+
+### Comparison with LLM Summarization
+
+| Aspect | Text Fitter (this plugin) | LLM Summarization |
+| --- | --- | --- |
+| **Output** | Original sentences, verbatim | Rewritten abstract |
+| **Fidelity** | High — no paraphrasing or hallucination risk | May introduce generalization errors |
+| **Coverage** | Limited to what existing sentences express | Can fuse information across sentences |
+| **Token cost** | Zero (runs before LLM) | Consumes input + output tokens |
+| **Speed** | 1–3 seconds | Model-dependent (seconds to minutes) |
+| **Language** | Chinese / Japanese / English | Model-dependent |
+
+### When It Works Well
+
+- **Structured documents** (reports, papers, contracts) where key points are
+  concentrated in topic sentences
+- **Compression ratios up to 5×** — enough budget for the main points across
+  different sections
+- **Dialogue / transcripts** — removing filler and repeated ideas, keeping
+  the substantive turns
+
+### When It Doesn't
+
+- **Narrative / creative text** — information is spread across descriptions,
+  not concentrated in individual sentences
+- **Extreme compression** (10×+) — any extractive method will lose
+  significant content
+- **When you need synthesis** — this tool selects sentences; it cannot merge
+  or rephrase them
+
+### Practical Advice
+
+Give the plugin a generous budget — **70–80% of the LLM's effective context
+window**. The diversity mechanism (MMR) works best when it has room to cover
+different facets of the document. Overly tight budgets force it to pick only
+the highest-scoring sentences, which tend to be thematically similar.
 
 ## Privacy
 
