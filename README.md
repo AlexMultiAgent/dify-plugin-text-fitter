@@ -79,7 +79,7 @@ actual behavior.
 ## Parameters
 
 | Parameter | Type | Required | Default | Description |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `text` | string | Yes | — | Input text to process |
 | `max_chars` | number | Yes | 30000 | Character threshold; exceeding triggers trimming |
 | `method` | select | No | `mmr` | Sentence selection: `"mmr"` (diverse, O(k×n)) or `"greedy"` (fast, O(n log n)) |
@@ -88,7 +88,7 @@ actual behavior.
 ## Outputs
 
 | Output | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `text` | string | The processed text (original or trimmed) |
 | `original_char_count` | number | Character count of the original input text |
 | `processed_char_count` | number | Character count of the output text |
@@ -178,7 +178,7 @@ O(k × n) overall complexity.
 variant was actually used:
 
 | `algorithm` value | Trigger | Behavior |
-|---|---|---|
+| --- | --- | --- |
 | `passthrough` | text ≤ max_chars | No processing; return original text |
 | `greedy` | method = `"greedy"` | Pure score-ranked selection |
 | `mmr` | method = `"mmr"`, ≤ 5000 sentences | Full MMR on all sentences |
@@ -206,6 +206,21 @@ whitespace boundary → hard truncation with `...` ellipsis.
 | Worst-case time | O(k × n) for MMR, O(n log n) for Greedy (n = candidates, k = selected sentences) |
 | Space | O(n) |
 | Dependencies | None (Python stdlib only) |
+
+### Concrete Example
+
+Take an 8,000-sentence document compressed to ~2,000 sentences:
+
+| Stage | Greedy | MMR (+ Prefilter) |
+| --- | --- | --- |
+| Tokenize + score | ~8,000 ops | ~8,000 ops |
+| Sort | ~100K comparisons | ~100K comparisons |
+| Select | ~8,000 (single pass) | ~10M (2,000 rounds × 5,000 candidates × Jaccard) |
+| **Overall** | **~0.01 s** | **~0.5–2 s** |
+
+Both share the same scoring and sorting overhead. The gap comes from the
+selection phase: MMR recalculates per-candidate diversity against each newly
+selected sentence, while Greedy simply walks the sorted list once.
 
 ## Effectiveness & Boundaries
 
