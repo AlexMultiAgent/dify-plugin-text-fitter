@@ -9,22 +9,13 @@ label:
   ja_JP: テキストフィッター
 description:
   en_US: >
-    Smart text trimming for LLM context window constraints. Calculates text
-    length, intelligently extracts key sentences when text exceeds a configurable
-    character threshold, or passes text through unchanged when within limits.
-    Supports Chinese, Japanese, and English text.
+    Smart text trimming to keep input within LLM context window token limits.
   zh_Hans: >
-    用于LLM上下文窗口受限等情形的智能文本裁剪工具。计算文本长度，
-    当文本超过可配置的字符阈值时智能提取关键句，未超限时直接透传。
-    支持中文、日文、英文文本。
+    智能文本裁剪工具，确保输入不超出LLM上下文窗口的token限制。
   zh_Hant: >
-    用於LLM上下文視窗受限等情境的智能文本裁剪工具。計算文本長度，
-    當文本超過可配置的字元閾值時智能提取關鍵句，未超限時直接透傳。
-    支援中文、日文、英文文本。
+    智能文本裁剪工具，確保輸入不超出LLM上下文視窗的token限制。
   ja_JP: >
-    LLMのコンテキストウィンドウ制約に対応するスマートテキストトリミングツール。
-    テキスト長を計算し、設定可能なしきい値を超えた場合は重要文を抽出、
-    制限内の場合はそのまま通過します。中国語、日本語、英語に対応。
+    LLMのコンテキストウィンドウ制限内にテキストを収めるスマートトリミングツール。
 icon: icon.svg
 resource:
   memory: 268435456

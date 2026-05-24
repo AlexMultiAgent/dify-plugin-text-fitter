@@ -4,17 +4,16 @@ description:
       Calculates text length and ensures it fits within a configurable character
       limit. If the text exceeds the limit, intelligently extracts the most
       important sentences using extractive summarization. Otherwise, passes the
-      text through unchanged. Supports Chinese, Japanese, and English input.
+      text through unchanged.
     zh_Hans: >
       计算文本长度，确保其不超出可配置的字符限制。文本超限时通过抽取式摘要
-      智能提取关键句，未超限时直接透传原文。支持中、日、英文文本。
+      智能提取关键句，未超限时直接透传原文。
     zh_Hant: >
       計算文本長度，確保其不超出可配置的字元限制。文本超限時通過抽取式摘要
-      智能提取關鍵句，未超限時直接透傳原文。支援中、日、英文文本。
+      智能提取關鍵句，未超限時直接透傳原文。
     ja_JP: >
       テキスト長を計算し、設定可能な文字数制限内に収めます。制限を超えた場合、
       抽出型要約で重要な文を抽出し、制限内の場合はそのまま通過します。
-      中国語、日本語、英語に対応。
   llm: >
     A tool that checks whether the input text exceeds a configurable character
     limit. If it does, intelligently extracts the most important sentences
