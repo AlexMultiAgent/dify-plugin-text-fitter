@@ -101,18 +101,18 @@ parameters:
       "mmr" (adds diversity penalty to reduce redundancy) or "greedy"
       (fast, top-score only). Default "mmr".
     options:
-      - value: greedy
-        label:
-          en_US: Greedy (Fast)
-          zh_Hans: 贪心（快速）
-          zh_Hant: 貪心（快速）
-          ja_JP: 貪欲（高速）
       - value: mmr
         label:
           en_US: MMR (Diverse)
           zh_Hans: MMR（多样）
           zh_Hant: MMR（多樣）
           ja_JP: MMR（多様）
+      - value: greedy
+        label:
+          en_US: Greedy (Fast)
+          zh_Hans: 贪心（快速）
+          zh_Hant: 貪心（快速）
+          ja_JP: 貪欲（高速）
     form: form
   - name: mmr_lambda
     type: select
