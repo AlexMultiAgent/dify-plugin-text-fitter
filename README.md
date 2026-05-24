@@ -198,9 +198,8 @@ Japanese lecture transcripts outperformed baselines by over 20% [5].
 
 MMR's diversity penalty reduces redundancy regardless of compression ratio.
 The practical ceiling is simple: the output can only hold as many sentences
-as fit within `max_chars`. For a ~100K character Chinese document (~500–600
-sentences), about one-third of sentences survive at the default
-`max_chars = 30000`.
+as fit within `max_chars`. At the default `max_chars = 30000` (~500–600 Chinese sentences),
+about one-third of sentences survive for a ~100K character document.
 
 At the same time, the remaining 20–30% headroom is essential for the downstream
 workflow: the LLM node's prompt template, system instructions, and output
