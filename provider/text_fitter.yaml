@@ -2,7 +2,7 @@ extra:
   python:
     source: provider/text_fitter.py
 identity:
-  author: alex
+  author: AlexMultiAgent
   name: text_fitter
   label:
     en_US: Text Fitter
