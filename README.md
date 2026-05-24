@@ -116,9 +116,9 @@ The plugin interface supports four locales:
 | Locale | Language |
 | --- | --- |
 | `en_US` | English |
-| `zh_Hans` | Simplified Chinese (简体中文) |
-| `zh_Hant` | Traditional Chinese (繁體中文) |
-| `ja_JP` | Japanese (日本語) |
+| `zh_Hans` | Simplified Chinese |
+| `zh_Hant` | Traditional Chinese |
+| `ja_JP` | Japanese |
 
 All parameter labels, descriptions, and option values are fully translated.
 
