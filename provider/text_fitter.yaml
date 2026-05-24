@@ -6,7 +6,7 @@ identity:
   name: text_fitter
   label:
     en_US: Text Fitter
-    zh_Hans: 文本字数适配器
+    zh_Hans: 文本精简器
     zh_Hant: 文本字數適配器
     ja_JP: テキストフィッター
   description:
