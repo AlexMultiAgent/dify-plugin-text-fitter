@@ -191,6 +191,11 @@ output_schema:
     processed_char_count:
       type: number
       description: Character count of the output text.
+    compression_ratio:
+      type: number
+      description: >
+        Compression ratio (original_char_count / processed_char_count).
+        1.0 when not trimmed, greater than 1.0 when trimmed.
     was_trimmed:
       type: boolean
       description: Whether the text was trimmed (true if original exceeded max_chars).

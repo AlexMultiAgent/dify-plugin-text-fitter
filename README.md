@@ -92,6 +92,7 @@ actual behavior.
 | `original_char_count` | number | Character count of the original input text |
 | `processed_char_count` | number | Character count of the output text |
 | `was_trimmed` | boolean | Whether the text was trimmed (true if original exceeded max_chars) |
+| `compression_ratio` | number | Compression ratio (original / processed). 1.0 when not trimmed, > 1.0 when trimmed |
 | `algorithm` | string | Algorithm actually used. See [Algorithm](#algorithm) for details |
 
 ## Language Support
@@ -171,7 +172,9 @@ selections across sections:
 When compression exceeds 5×, consider pre-processing the document (e.g.,
 removing boilerplate sections). LLM-based summarization can synthesize across
 sentences, but may incur additional cost (e.g., cloud API usage) for models with
-enough context window to process the full document.
+enough context window to process the full document. In practice, the default
+`max_chars = 30000` combined with a 5× compression ratio covers input texts up
+to ~150K characters, which handles the majority of real-world use cases.
 
 At the same time, the remaining 20–30% headroom is essential for the downstream
 workflow: the LLM node's prompt template, system instructions, and output

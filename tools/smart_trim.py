@@ -23,6 +23,7 @@ class SmartTrimTool(Tool):
                 "text": tool_parameters.get("text") or "",
                 "original_char_count": 0,
                 "processed_char_count": 0,
+                "compression_ratio": 1.0,
                 "was_trimmed": False,
                 "algorithm": "passthrough",
             })
@@ -57,6 +58,7 @@ class SmartTrimTool(Tool):
                 "text": text,
                 "original_char_count": original_length,
                 "processed_char_count": original_length,
+                "compression_ratio": 1.0,
                 "was_trimmed": False,
                 "algorithm": "passthrough",
             })
@@ -68,11 +70,13 @@ class SmartTrimTool(Tool):
             diversity=diversity,
         )
         processed_length = len(processed_text)
+        ratio = original_length / max(processed_length, 1)
 
         yield self.create_json_message({
             "text": processed_text,
             "original_char_count": original_length,
             "processed_char_count": processed_length,
+            "compression_ratio": round(ratio, 2),
             "was_trimmed": True,
             "algorithm": algorithm,
         })
