@@ -100,7 +100,7 @@ actual behavior.
 
 ### Text Processing
 
-The tool automatically handles **Chinese** (Simplified & Traditional), **Japanese**,
+The tool handles **Chinese** (Simplified & Traditional), **Japanese**,
 and **English** text. The tokenizer recognizes:
 
 - **CJK Unified Ideographs** (U+4E00–U+9FFF) — Chinese and Japanese kanji
@@ -143,15 +143,15 @@ for a specific scenario:
 | **Fidelity** | High — no paraphrasing or hallucination risk | May introduce generalization errors |
 | **Coverage** | Limited to what existing sentences express | Can fuse information across sentences |
 | **Token cost** | Zero (runs before LLM) | Consumes input + output tokens |
-| **Context window** | No requirement — runs outside the LLM | Must fit the full document **plus** the summary output |
-| **Speed** | 1–3 seconds | Model-dependent (seconds to minutes) |
+| **Context window** | Compression runs outside the LLM; output still uses context space | Must fit the full document **plus** the summary output |
+| **Speed** | Under 1 second for most documents | Model-dependent (seconds to minutes) |
 | **Language** | Chinese / Japanese / English | Model-dependent |
 
 ### When It Works Well
 
 - **Structured documents** (reports, papers, contracts) where key points are
   concentrated in topic sentences
-- **Compression ratios up to 5×** — enough budget for the main points across
+- **Moderate compression** — enough budget for the main points across
   different sections
 - **Dialogue / transcripts** — removing filler and repeated ideas, keeping
   the substantive turns
@@ -160,7 +160,7 @@ for a specific scenario:
 
 - **Narrative / creative text** — information is spread across descriptions,
   not concentrated in individual sentences
-- **Extreme compression** (10×+) — any extractive method will lose
+- **Aggressive compression** — any extractive method will lose
   significant content
 - **When you need synthesis** — this tool selects sentences; it cannot merge
   or rephrase them
@@ -172,25 +172,35 @@ window**. The diversity mechanism (MMR) works best when it has room to cover
 different facets of the document. Overly tight budgets force it to pick only
 the highest-scoring sentences, which tend to be thematically similar.
 
-Extractive summarization has a practical ceiling of about **5× compression**
-before quality degrades noticeably. Beyond that, too few sentences remain to
-represent the full document. At the default `max_chars = 30000` (roughly 500–600
-Chinese sentences), the compression ratio determines how well MMR can distribute
-selections across sections:
+Research on MMR specifically (not general extractive methods) confirms its
+effectiveness. On Chinese news texts (NLPCC2017), an MMR-based summarizer
+achieved ROUGE-1 77.8%, ROUGE-2 60.3%, ROUGE-L 63.9% — outperforming
+both TextRank (+3 pp) and Lead-3 (+2 pp) baselines [1]. The optimal λ was
+found to be **0.7** for Chinese text. (This plugin uses the same λ, though
+the paper used neural embeddings while this plugin uses TF-IDF — the
+optimal value may differ.) On English CNN/Daily Mail, a 2026 study explicitly validated
+diversity penalties for extractive summarization: the DiCo-EXT framework
+achieved lower redundancy (Self-BLEU) without sacrificing ROUGE by adding a
+differentiable diversity loss — the same principle behind MMR [2]. DL-MMR (NAACL 2025) preserved MMR's informativeness
+while reducing computation by 500,000× [3]. For Japanese, MMR with
+doc2vec embeddings on Nikkei news achieved ~27% content-level agreement
+with human-written summaries [4]; MMR combined with NMT embeddings on
+Japanese lecture transcripts outperformed baselines by over 20% [5].
 
-| Original chars | ~Sentences | Compression | MMR quality |
-| --- | --- | --- | --- |
-| 60K–90K | 1,000–1,500 | 2–3× | Very good — ample room for topical coverage |
-| 90K–150K | 1,500–2,500 | 3–5× | Good — each section gets representative sentences |
-| 150K–250K | 2,500–4,000 | 5–8× | Marginal — important passages may be skipped |
-| 250K+ | 4,000+ | 8×+ | Poor — heavy information loss across the board |
+> These benchmarks use neural embeddings (Word2Vec / BERT) for sentence
+> representation, not pure TF-IDF. The ROUGE scores above reflect
+> research-grade implementations and should not be read as this plugin's
+> expected scores. This plugin's heuristic scoring (position + keyword
+> density + length) is simpler; the diversity mechanism provides the same
+> structural benefit, but absolute output quality will be lower. Cited
+> benchmarks span **English, Chinese, and Japanese** datasets (CNN/Daily
+> Mail, NLPCC2017, Nikkei, TED transcripts).
 
-When compression exceeds 5×, consider pre-processing the document (e.g.,
-removing boilerplate sections). LLM-based summarization can synthesize across
-sentences, but may incur additional cost (e.g., cloud API usage) for models with
-enough context window to process the full document. In practice, the default
-`max_chars = 30000` combined with a 5× compression ratio covers input texts up
-to ~150K characters, which handles the majority of real-world use cases.
+MMR's diversity penalty reduces redundancy regardless of compression ratio.
+The practical ceiling is simple: the output can only hold as many sentences
+as fit within `max_chars`. For a ~100K character Chinese document (~500–600
+sentences), about one-third of sentences survive at the default
+`max_chars = 30000`.
 
 At the same time, the remaining 20–30% headroom is essential for the downstream
 workflow: the LLM node's prompt template, system instructions, and output
@@ -302,3 +312,15 @@ servers, APIs, or third-party services. See [PRIVACY.md](PRIVACY.md) for details
 ## License
 
 [MIT](LICENSE)
+
+## References
+
+1. Zhang, Q., Fan, Y., & Jin, D. (2023). *Research on News Text Summarization Generation Based on MMR and WordNet.* Journal of Southwest China Normal University. NLPCC2017 ROUGE-1 77.8%.
+
+2. Wang, Y. & Zhang, J. (2026). *DiCo-EXT: Diversity and Consistency-Guided Framework for Extractive Summarization.* MDPI Entropy, 28(1), 88. CNN/Daily Mail, XSum, WikiHow.
+
+3. Juseon-Do et al. (2025). *Considering Length Diversity in Retrieval-Augmented Summarization (DL-MMR).* Findings of ACL: NAACL 2025.
+
+4. Ishihara & Sawa (2021). *News Article Summarization Using MMR-based Sentence Selection and TF-IDF-based Sentence Compression.* JSAI 2021. Nikkei dataset, ~27% human agreement.
+
+5. ANLP 2020 (P5-21). *MMR with NMT/BERT Distributed Representations for Lecture Transcript Summarization.* Japanese TED and lecture datasets, ROUGE evaluation.
