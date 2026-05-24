@@ -184,7 +184,7 @@ achieved lower redundancy (Self-BLEU) without sacrificing ROUGE by adding a
 differentiable diversity loss — the same principle behind MMR [2]. DL-MMR (NAACL 2025) preserved MMR's informativeness
 while reducing computation by 500,000× [3]. For Japanese, MMR with
 doc2vec embeddings on Nikkei news achieved ~27% content-level agreement
-with human-written summaries [4]; MMR combined with NMT embeddings on
+with human-written summaries (non-matching outputs were also judged plausible) [4]; MMR combined with NMT embeddings on
 Japanese lecture transcripts outperformed baselines by over 20% [5].
 
 > These benchmarks use neural embeddings (Word2Vec / BERT) for sentence
@@ -314,12 +314,8 @@ servers, APIs, or third-party services. See [PRIVACY.md](PRIVACY.md) for details
 
 ## References
 
-1. Zhang, Q., Fan, Y., & Jin, D. (2023). *Research on News Text Summarization Generation Based on MMR and WordNet.* Journal of Southwest China Normal University. NLPCC2017 ROUGE-1 77.8%.
-
-2. Wang, Y. & Zhang, J. (2026). *DiCo-EXT: Diversity and Consistency-Guided Framework for Extractive Summarization.* MDPI Entropy, 28(1), 88. CNN/Daily Mail, XSum, WikiHow.
-
-3. Juseon-Do et al. (2025). *Considering Length Diversity in Retrieval-Augmented Summarization (DL-MMR).* Findings of ACL: NAACL 2025.
-
-4. Ishihara & Sawa (2021). *News Article Summarization Using MMR-based Sentence Selection and TF-IDF-based Sentence Compression.* JSAI 2021. Nikkei dataset, ~27% human agreement.
-
-5. ANLP 2020 (P5-21). *MMR with NMT/BERT Distributed Representations for Lecture Transcript Summarization.* Japanese TED and lecture datasets, ROUGE evaluation.
+1. Zhang, Q., Fan, Y., & Jin, D. (2023). *Research on News Text Summarization Generation Based on MMR and WordNet.* Journal of Southwest China Normal University.
+2. Wang, Y. & Zhang, J. (2026). *DiCo-EXT: Diversity and Consistency-Guided Framework for Extractive Summarization.* MDPI Entropy, 28(1), 88.
+3. Juseon-Do et al. (2025). *Considering Length Diversity in Retrieval-Augmented Summarization.* In Findings of the Association for Computational Linguistics: NAACL 2025.
+4. Ishihara, S. & Sawa, N. (2021). *News Article Summarization Using MMR-based Sentence Selection and TF-IDF-based Sentence Compression.* In Proceedings of the 35th Annual Conference of the Japanese Society for Artificial Intelligence (JSAI 2021).
+5. ANLP 2020 (P5-21). *MMR with NMT/BERT Distributed Representations for Lecture Transcript Summarization.* In Proceedings of the 26th Annual Meeting of the Association for Natural Language Processing.
