@@ -9,6 +9,27 @@ from dify_plugin.entities.tool import ToolInvokeMessage
 
 
 class SmartTrimTool(Tool):
+    def _yield_outputs(
+        self, text: str, original_length: int, processed_length: int,
+        was_trimmed: bool, algorithm: str,
+    ) -> Generator[ToolInvokeMessage, None, None]:
+        ratio = 1.0 if original_length == 0 else original_length / max(processed_length, 1)
+        compression_ratio = round(ratio, 2)
+        yield self.create_text_message(text)
+        yield self.create_variable_message("original_char_count", original_length)
+        yield self.create_variable_message("processed_char_count", processed_length)
+        yield self.create_variable_message("compression_ratio", compression_ratio)
+        yield self.create_variable_message("was_trimmed", was_trimmed)
+        yield self.create_variable_message("algorithm", algorithm)
+        yield self.create_json_message({
+            "text": text,
+            "original_char_count": original_length,
+            "processed_char_count": processed_length,
+            "compression_ratio": compression_ratio,
+            "was_trimmed": was_trimmed,
+            "algorithm": algorithm,
+        })
+
     def _invoke(
         self, tool_parameters: dict[str, Any]
     ) -> Generator[ToolInvokeMessage, None, None]:
@@ -19,14 +40,14 @@ class SmartTrimTool(Tool):
             import traceback
             exc = traceback.format_exc()
             print(exc, file=sys.stderr, flush=True)
-            yield self.create_json_message({
-                "text": tool_parameters.get("text") or "",
-                "original_char_count": 0,
-                "processed_char_count": 0,
-                "compression_ratio": 1.0,
-                "was_trimmed": False,
-                "algorithm": "passthrough",
-            })
+            fallback_text = tool_parameters.get("text") or ""
+            yield from self._yield_outputs(
+                text=fallback_text,
+                original_length=0,
+                processed_length=0,
+                was_trimmed=False,
+                algorithm="passthrough",
+            )
 
     def _do_invoke(
         self, tool_parameters: dict[str, Any]
@@ -54,14 +75,13 @@ class SmartTrimTool(Tool):
         original_length = len(text)
 
         if original_length <= max_chars:
-            yield self.create_json_message({
-                "text": text,
-                "original_char_count": original_length,
-                "processed_char_count": original_length,
-                "compression_ratio": 1.0,
-                "was_trimmed": False,
-                "algorithm": "passthrough",
-            })
+            yield from self._yield_outputs(
+                text=text,
+                original_length=original_length,
+                processed_length=original_length,
+                was_trimmed=False,
+                algorithm="passthrough",
+            )
             return
 
         processed_text, algorithm = _extract_key_sentences(
@@ -70,16 +90,14 @@ class SmartTrimTool(Tool):
             diversity=diversity,
         )
         processed_length = len(processed_text)
-        ratio = original_length / max(processed_length, 1)
 
-        yield self.create_json_message({
-            "text": processed_text,
-            "original_char_count": original_length,
-            "processed_char_count": processed_length,
-            "compression_ratio": round(ratio, 2),
-            "was_trimmed": True,
-            "algorithm": algorithm,
-        })
+        yield from self._yield_outputs(
+            text=processed_text,
+            original_length=original_length,
+            processed_length=processed_length,
+            was_trimmed=True,
+            algorithm=algorithm,
+        )
 
 
 # Maximum number of sentences to run MMR on directly. For larger documents,

@@ -8,6 +8,9 @@ description:
     zh_Hans: >
       计算文本长度，确保其不超出可配置的字符限制。文本超限时通过抽取式摘要
       智能提取关键句，未超限时直接透传原文。支持中、日、英文文本。
+    zh_Hant: >
+      計算文本長度，確保其不超出可配置的字元限制。文本超限時通過抽取式摘要
+      智能提取關鍵句，未超限時直接透傳原文。支援中、日、英文文本。
     ja_JP: >
       テキスト長を計算し、設定可能な文字数制限内に収めます。制限を超えた場合、
       抽出型要約で重要な文を抽出し、制限内の場合はそのまま通過します。
@@ -24,11 +27,12 @@ extra:
   python:
     source: tools/smart_trim.py
 identity:
-  author: AlexMultiAgent
+  author: alexmultiagent
   name: smart_trim
   label:
     en_US: Smart Trim
     zh_Hans: 智能撷取
+    zh_Hant: 智能擷取
     ja_JP: スマートトリム
 parameters:
   - name: text
@@ -37,10 +41,12 @@ parameters:
     label:
       en_US: Input Text
       zh_Hans: 输入文本
+      zh_Hant: 輸入文本
       ja_JP: 入力テキスト
     human_description:
       en_US: The text to be checked and trimmed.
       zh_Hans: 需要检查和裁剪的文本。
+      zh_Hant: 需要檢查和裁剪的文本。
       ja_JP: チェックとトリミングを行うテキスト。
     llm_description: The text content to be checked and processed.
     form: llm
@@ -51,6 +57,7 @@ parameters:
     label:
       en_US: Max Chars
       zh_Hans: 最大字符数
+      zh_Hant: 最大字元數
       ja_JP: 最大文字数
     human_description:
       en_US: >
@@ -60,6 +67,9 @@ parameters:
       zh_Hans: >
         字符数阈值。超过此限制的文本将被裁剪。请根据LLM实际上下文窗口设置
         （如 --max-model-len 25000 表示约25000 tokens，需保守设置）。
+      zh_Hant: >
+        字元數閾值。超過此限制的文本將被裁剪。請根據LLM實際上下文視窗設定
+        （如 --max-model-len 25000 表示約25000 tokens，需保守設定）。
       ja_JP: >
         文字数のしきい値。これを超えるテキストはトリミングされます。
         LLMの実際のコンテキストウィンドウに基づいて設定してください。
@@ -72,6 +82,7 @@ parameters:
     label:
       en_US: Method
       zh_Hans: 算法
+      zh_Hant: 演算法
       ja_JP: アルゴリズム
     human_description:
       en_US: >
@@ -81,6 +92,9 @@ parameters:
       zh_Hans: >
         "mmr"增加多样性惩罚以减少冗余内容（较慢），
         "greedy"按分数从高到低选取（快速）。默认"mmr"。
+      zh_Hant: >
+        "mmr"增加多樣性懲罰以減少冗餘內容（較慢，O(k×n)），
+        "greedy"按分數從高到低選取（快速，O(n log n)）。預設"mmr"。
       ja_JP: >
         "mmr"は多様性ペナルティで冗長性を低減（低速）、
         "greedy"はスコア順に選択（高速）。デフォルト"mmr"。
@@ -92,11 +106,13 @@ parameters:
         label:
           en_US: Greedy (Fast)
           zh_Hans: 贪心（快速）
+          zh_Hant: 貪心（快速）
           ja_JP: 貪欲（高速）
       - value: mmr
         label:
           en_US: MMR (Diverse)
           zh_Hans: MMR（多样）
+          zh_Hant: MMR（多樣）
           ja_JP: MMR（多様）
     form: form
   - name: mmr_lambda
@@ -106,6 +122,7 @@ parameters:
     label:
       en_US: MMR Lambda (λ)
       zh_Hans: MMR λ 参数
+      zh_Hant: MMR λ 參數
       ja_JP: MMR λパラメータ
     human_description:
       en_US: >
@@ -115,6 +132,9 @@ parameters:
       zh_Hans: >
         MMR相关性参数λ。0=纯多样性（最大差异），
         1=纯相关性（同贪心）。默认0.7。method为"greedy"时忽略。
+      zh_Hant: >
+        MMR相關性參數λ。0=純多樣性（最大差異），
+        1=純相關性（同貪心）。預設0.7。method為"greedy"時忽略。
       ja_JP: >
         MMR関連性パラメータλ。0=純粋な多様性、
         1=純粋な関連性（貪欲と同じ）。デフォルト0.7。
@@ -127,56 +147,67 @@ parameters:
         label:
           en_US: "0.0 (Pure Diversity)"
           zh_Hans: "0.0（纯多样性）"
+          zh_Hant: "0.0（純多樣性）"
           ja_JP: "0.0（純粋な多様性）"
       - value: "0.1"
         label:
           en_US: "0.1"
           zh_Hans: "0.1"
+          zh_Hant: "0.1"
           ja_JP: "0.1"
       - value: "0.2"
         label:
           en_US: "0.2"
           zh_Hans: "0.2"
+          zh_Hant: "0.2"
           ja_JP: "0.2"
       - value: "0.3"
         label:
           en_US: "0.3"
           zh_Hans: "0.3"
+          zh_Hant: "0.3"
           ja_JP: "0.3"
       - value: "0.4"
         label:
           en_US: "0.4"
           zh_Hans: "0.4"
+          zh_Hant: "0.4"
           ja_JP: "0.4"
       - value: "0.5"
         label:
           en_US: "0.5 (Balanced)"
           zh_Hans: "0.5（平衡）"
+          zh_Hant: "0.5（平衡）"
           ja_JP: "0.5（バランス）"
       - value: "0.6"
         label:
           en_US: "0.6"
           zh_Hans: "0.6"
+          zh_Hant: "0.6"
           ja_JP: "0.6"
       - value: "0.7"
         label:
           en_US: "0.7 (Recommended)"
           zh_Hans: "0.7（推荐）"
+          zh_Hant: "0.7（推薦）"
           ja_JP: "0.7（推奨）"
       - value: "0.8"
         label:
           en_US: "0.8"
           zh_Hans: "0.8"
+          zh_Hant: "0.8"
           ja_JP: "0.8"
       - value: "0.9"
         label:
           en_US: "0.9"
           zh_Hans: "0.9"
+          zh_Hant: "0.9"
           ja_JP: "0.9"
       - value: "1.0"
         label:
           en_US: "1.0 (Pure Relevance)"
           zh_Hans: "1.0（纯相关性）"
+          zh_Hant: "1.0（純相關性）"
           ja_JP: "1.0（純粋な関連性）"
     form: form
 output_schema:
@@ -208,4 +239,3 @@ output_schema:
         "mmr" (full MMR diversity-aware selection),
         "mmr_prefilter" (MMR with pre-filtered top-5000 candidate pool),
         "boundary_truncation" (fallback — cut at sentence/word boundary).
-

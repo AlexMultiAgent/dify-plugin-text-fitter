@@ -1,10 +1,11 @@
 version: 0.0.1
 type: plugin
-author: "AlexMultiAgent"
+author: "alexmultiagent"
 name: text_fitter
 label:
   en_US: Text Fitter
   zh_Hans: 文本字数适配器
+  zh_Hant: 文本字數適配器
   ja_JP: テキストフィッター
 description:
   en_US: >
@@ -16,6 +17,10 @@ description:
     用于LLM上下文窗口受限等情形的智能文本裁剪工具。计算文本长度，
     当文本超过可配置的字符阈值时智能提取关键句，未超限时直接透传。
     支持中文、日文、英文文本。
+  zh_Hant: >
+    用於LLM上下文視窗受限等情境的智能文本裁剪工具。計算文本長度，
+    當文本超過可配置的字元閾值時智能提取關鍵句，未超限時直接透傳。
+    支援中文、日文、英文文本。
   ja_JP: >
     LLMのコンテキストウィンドウ制約に対応するスマートテキストトリミングツール。
     テキスト長を計算し、設定可能なしきい値を超えた場合は重要文を抽出、

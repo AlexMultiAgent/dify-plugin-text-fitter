@@ -1,8 +1,9 @@
 # Text Fitter
 
 A Dify tool plugin that ensures text fits within LLM context window limits
-via intelligent extractive summarization. Supports **Chinese**, **Japanese**,
-and **English** text.
+via intelligent extractive summarization. Supports **Chinese** (Simplified & Traditional), **Japanese**,
+and **English** text. UI localized in **English**, **Simplified Chinese**,
+**Traditional Chinese**, and **Japanese**.
 
 ## Why
 
@@ -97,14 +98,29 @@ actual behavior.
 
 ## Language Support
 
-The tool automatically handles **Chinese**, **Japanese**, and **English** text.
-The tokenizer recognizes:
+### Text Processing
+
+The tool automatically handles **Chinese** (Simplified & Traditional), **Japanese**,
+and **English** text. The tokenizer recognizes:
 
 - **CJK Unified Ideographs** (U+4E00–U+9FFF) — Chinese and Japanese kanji
 - **CJK Extension A** (U+3400–U+4DBF) — rare and historical characters
 - **Hiragana** (U+3040–U+309F) — Japanese syllabary
 - **Katakana** (U+30A0–U+30FF) — Japanese syllabary
 - **Latin words** — extracted via word-boundary regex (`[a-zA-Z0-9]+`)
+
+### UI Localization
+
+The plugin interface supports four locales:
+
+| Locale | Language |
+| --- | --- |
+| `en_US` | English |
+| `zh_Hans` | Simplified Chinese (简体中文) |
+| `zh_Hant` | Traditional Chinese (繁體中文) |
+| `ja_JP` | Japanese (日本語) |
+
+All parameter labels, descriptions, and option values are fully translated.
 
 The sentence splitter handles CJK fullwidth punctuation (`。！？`),
 Japanese closing brackets (`」』`), English halfwidth punctuation (`. ! ?`),
