@@ -17,6 +17,14 @@ This plugin acts as a pre-processing guard: it measures the input, and if it
 exceeds a user-configured threshold, trims it by extracting only the most
 informative sentences — before the text ever reaches the LLM.
 
+> **Source**: [github.com/AlexMultiAgent/dify-plugin-text-fitter](https://github.com/AlexMultiAgent/dify-plugin-text-fitter)
+
+## Requirements
+
+- **No API keys or credentials** — the plugin runs entirely in-process with no external services.
+- **No network connection** — all processing is local and in-memory.
+- Dify platform (Community Edition or Cloud) with plugin support enabled.
+
 ## Installation
 
 ### From Dify Marketplace
