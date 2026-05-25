@@ -50,17 +50,17 @@ based on your primary input language. The ratios below are based on the
 **Qwen3 tokenizer** (BBPE, 151K vocab) — representative of modern Chinese
 LLM tokenizers:
 
-| Language | Tokens per char | How many chars fit in 20K tokens |
-| --- | --- | --- |
-| English | ~0.25 (1 token ≈ 4 chars) | ~80,000 |
-| Chinese | ~0.6 (1 token ≈ 1.7 chars) | ~33,000 |
-| Japanese | ~0.8 (1 token ≈ 1.3 chars) | ~25,000 |
+| Language | Tokens per char            | How many chars fit in 20K tokens |
+| -------- | -------------------------- | -------------------------------- |
+| English  | ~0.25 (1 token ≈ 4 chars)  | ~80,000                          |
+| Chinese  | ~0.6 (1 token ≈ 1.7 chars) | ~33,000                          |
+| Japanese | ~0.8 (1 token ≈ 1.3 chars) | ~25,000                          |
 
 > **Note:** Token-to-character ratios vary across model families. The table
 > above reflects Qwen3 (BBPE, 151K vocab). GPT-4 class tokenizers (cl100k)
 > consume ~1.1 tokens per Chinese character — nearly 2× more. Always verify
 > with your specific model's tokenizer when precise budgeting is critical.
->
+> 
 > Sources: Qwen3 Technical Report (arXiv:2505.09388, 2025); TokLens
 > (ACL 2026 SRW).
 
@@ -78,23 +78,23 @@ actual behavior.
 
 ## Parameters
 
-| Parameter | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `text` | string | Yes | — | Input text to process |
-| `max_chars` | number | Yes | 30000 | Character threshold; exceeding triggers trimming |
-| `method` | select | No | `mmr` | Sentence selection: `"mmr"` (diverse, O(k×n)) or `"greedy"` (fast, O(n log n)) |
-| `mmr_lambda` | select | No | `0.7` | MMR λ (relevance weight). 11 options from `0.0` (Pure Diversity) to `1.0` (Pure Relevance). Ignored when `method` is `"greedy"` |
+| Parameter    | Type   | Required | Default | Description                                                                                                                     |
+| ------------ | ------ | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `text`       | string | Yes      | —       | Input text to process                                                                                                           |
+| `max_chars`  | number | Yes      | 30000   | Character threshold; exceeding triggers trimming                                                                                |
+| `method`     | select | No       | `mmr`   | Sentence selection: `"mmr"` (diverse, O(k×n)) or `"greedy"` (fast, O(n log n))                                                  |
+| `mmr_lambda` | select | No       | `0.7`   | MMR λ (relevance weight). 11 options from `0.0` (Pure Diversity) to `1.0` (Pure Relevance). Ignored when `method` is `"greedy"` |
 
 ## Outputs
 
-| Output | Type | Description |
-| --- | --- | --- |
-| `text` | string | The processed text (original or trimmed) |
-| `original_char_count` | number | Character count of the original input text |
-| `processed_char_count` | number | Character count of the output text |
-| `was_trimmed` | boolean | Whether the text was trimmed (true if original exceeded max_chars) |
-| `compression_ratio` | number | Compression ratio (original / processed). 1.0 when not trimmed, > 1.0 when trimmed |
-| `algorithm` | string | Algorithm actually used. See [Algorithm](#algorithm) for details |
+| Output                 | Type    | Description                                                                        |
+| ---------------------- | ------- | ---------------------------------------------------------------------------------- |
+| `text`                 | string  | The processed text (original or trimmed)                                           |
+| `original_char_count`  | number  | Character count of the original input text                                         |
+| `processed_char_count` | number  | Character count of the output text                                                 |
+| `was_trimmed`          | boolean | Whether the text was trimmed (true if original exceeded max_chars)                 |
+| `compression_ratio`    | number  | Compression ratio (original / processed). 1.0 when not trimmed, > 1.0 when trimmed |
+| `algorithm`            | string  | Algorithm actually used. See [Algorithm](#algorithm) for details                   |
 
 ## Language Support
 
@@ -105,20 +105,23 @@ and **English** text. The tokenizer recognizes:
 
 - **CJK Unified Ideographs** (U+4E00–U+9FFF) — Chinese and Japanese kanji
 - **CJK Extension A** (U+3400–U+4DBF) — rare and historical characters
+- **CJK Compatibility Ideographs** (U+F900–U+FAFF) — legacy encodings
+- **CJK Extensions B–I** (U+20000–U+2EBEF) — supplementary plane characters
 - **Hiragana** (U+3040–U+309F) — Japanese syllabary
 - **Katakana** (U+30A0–U+30FF) — Japanese syllabary
+- **Halfwidth Katakana** (U+FF65–U+FF9F) — Japanese halfwidth forms
 - **Latin words** — extracted via word-boundary regex (`[a-zA-Z0-9]+`)
 
 ### UI Localization
 
 The plugin interface supports four locales:
 
-| Locale | Language |
-| --- | --- |
-| `en_US` | English |
-| `zh_Hans` | Simplified Chinese |
+| Locale    | Language            |
+| --------- | ------------------- |
+| `en_US`   | English             |
+| `zh_Hans` | Simplified Chinese  |
 | `zh_Hant` | Traditional Chinese |
-| `ja_JP` | Japanese |
+| `ja_JP`   | Japanese            |
 
 All parameter labels, descriptions, and option values are fully translated.
 
@@ -137,15 +140,15 @@ for a specific scenario:
 
 ### Comparison with LLM Summarization
 
-| Aspect | Text Fitter (this plugin) | LLM Summarization |
-| --- | --- | --- |
-| **Output** | Original sentences, verbatim | Rewritten abstract |
-| **Fidelity** | High — no paraphrasing or hallucination risk | May introduce generalization errors |
-| **Coverage** | Limited to what existing sentences express | Can fuse information across sentences |
-| **Token cost** | Zero (runs before LLM) | Consumes input + output tokens |
+| Aspect             | Text Fitter (this plugin)                                         | LLM Summarization                                      |
+| ------------------ | ----------------------------------------------------------------- | ------------------------------------------------------ |
+| **Output**         | Original sentences, verbatim                                      | Rewritten abstract                                     |
+| **Fidelity**       | High — no paraphrasing or hallucination risk                      | May introduce generalization errors                    |
+| **Coverage**       | Limited to what existing sentences express                        | Can fuse information across sentences                  |
+| **Token cost**     | Zero (runs before LLM)                                            | Consumes input + output tokens                         |
 | **Context window** | Compression runs outside the LLM; output still uses context space | Must fit the full document **plus** the summary output |
-| **Speed** | Under 1 second for most documents | Model-dependent (seconds to minutes) |
-| **Language** | Chinese / Japanese / English | Model-dependent |
+| **Speed**          | Under 3 second for most documents     | Model-dependent (seconds to minutes)                   |
+| **Language**       | Chinese / Japanese / English                                      | Model-dependent                                        |
 
 ### When It Works Well
 
@@ -228,11 +231,11 @@ Regex-based sentence splitting aware of CJK, Japanese, and English
 punctuation conventions, with abbreviation protection for 40+ common
 abbreviations (`Mr.`, `Dr.`, `Inc.`, etc.).
 
-| Language | Sentence-ending markers |
-|---|---|
-| Chinese | `。！？` |
-| Japanese | `。！？」』` |
-| English | `. ! ?` followed by uppercase or CJK character |
+| Language | Sentence-ending markers                        |
+| -------- | ---------------------------------------------- |
+| Chinese  | `。！？`                                          |
+| Japanese | `。！？」』`                                        |
+| English  | `. ! ?` followed by uppercase or CJK character |
 
 ### 2. Sentence Scoring
 
@@ -276,13 +279,13 @@ O(k × n) overall complexity.
 **Performance guardrails** — The `algorithm` output variable records which
 variant was actually used:
 
-| `algorithm` value | Trigger | Behavior |
-| --- | --- | --- |
-| `passthrough` | text ≤ max_chars | No processing; return original text |
-| `greedy` | method = `"greedy"` | Pure score-ranked selection |
-| `mmr` | method = `"mmr"`, ≤ 5000 sentences | Full MMR on all sentences |
-| `mmr_prefilter` | method = `"mmr"`, > 5000 sentences | Score-ranked pre-filter to top 5000 candidates, then MMR |
-| `boundary_truncation` | emergency fallback | No sentence fits budget; cut at sentence/word boundary |
+| `algorithm` value     | Trigger                            | Behavior                                                 |
+| --------------------- | ---------------------------------- | -------------------------------------------------------- |
+| `passthrough`         | text ≤ max_chars                   | No processing; return original text                      |
+| `greedy`              | method = `"greedy"`                | Pure score-ranked selection                              |
+| `mmr`                 | method = `"mmr"`, ≤ 5000 sentences | Full MMR on all sentences                                |
+| `mmr_prefilter`       | method = `"mmr"`, > 5000 sentences | Score-ranked pre-filter to top 5000 candidates, then MMR |
+| `boundary_truncation` | emergency fallback                 | No sentence fits budget; cut at sentence/word boundary   |
 
 ### 4. Positional Reordering
 
@@ -293,15 +296,16 @@ coherent, readable output.
 
 Triggered only when no sentence fits within `max_chars` (e.g., every sentence
 is individually longer than the budget). Tries: sentence-ending punctuation →
-whitespace boundary → hard truncation with `...` ellipsis.
+whitespace boundary → hard truncation with ellipsis (`...` for English text,
+`……` for CJK text).
 
 ### Complexity
 
-| Metric | Value |
-|---|---|
+| Metric          | Value                                                                            |
+| --------------- | -------------------------------------------------------------------------------- |
 | Worst-case time | O(k × n) for MMR, O(n log n) for Greedy (n = candidates, k = selected sentences) |
-| Space | O(n) |
-| Dependencies | None (Python stdlib only) |
+| Space           | O(n)                                                                             |
+| Dependencies    | None (Python stdlib only)                                                        |
 
 ## Privacy
 

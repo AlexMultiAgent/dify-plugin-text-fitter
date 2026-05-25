@@ -1,0 +1,12 @@
+.git/
+.gitignore
+.difyignore
+__pycache__/
+.venv/
+*.pyc
+*.pyo
+_test_*.py
+*.difypkg
+cookies.txt
+.verification.dify.json
+uv.lock

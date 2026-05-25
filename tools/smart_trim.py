@@ -14,7 +14,7 @@ class SmartTrimTool(Tool):
         was_trimmed: bool, algorithm: str,
     ) -> Generator[ToolInvokeMessage, None, None]:
         ratio = 1.0 if original_length == 0 else original_length / max(processed_length, 1)
-        compression_ratio = round(ratio, 2)
+        compression_ratio = round(ratio, 4)
         yield self.create_text_message(text)
         yield self.create_variable_message("original_char_count", original_length)
         yield self.create_variable_message("processed_char_count", processed_length)
@@ -41,13 +41,18 @@ class SmartTrimTool(Tool):
             exc = traceback.format_exc()
             print(exc, file=sys.stderr, flush=True)
             fallback_text = tool_parameters.get("text") or ""
+            fallback_len = len(fallback_text)
             yield from self._yield_outputs(
                 text=fallback_text,
-                original_length=0,
-                processed_length=0,
+                original_length=fallback_len,
+                processed_length=fallback_len,
                 was_trimmed=False,
                 algorithm="passthrough",
             )
+            yield self.create_variable_message("error", exc)
+            yield self.create_json_message({
+                "error": exc,
+            })
 
     def _do_invoke(
         self, tool_parameters: dict[str, Any]
@@ -226,20 +231,18 @@ def _mmr_select(
     so each selection round is O(n) instead of O(n*k), yielding O(n*k) overall.
     """
     n = len(sentences)
-    # Pre-compute token sets once — avoid repeated set() calls in inner loops
     sent_token_sets: list[set[str]] = [set(t) for t in sentence_tokens]
+    inv_lambda = 1.0 - lambda_mmr
 
     selected_indices: list[int] = []
     total_chars = 0
-    remaining: dict[int, float] = {}  # idx -> current mmr score
+    remaining: dict[int, float] = {}
 
-    # Per-candidate max overlap with any selected sentence (incrementally updated)
     max_overlap: list[float] = [0.0] * n
 
-    # Initialize — only include sentences that individually fit the budget
     for i, sent in enumerate(sentences):
         if len(sent) <= max_chars:
-            remaining[i] = lambda_mmr * scores[i] + (1.0 - lambda_mmr) * 1.0
+            remaining[i] = lambda_mmr * scores[i] + inv_lambda * 1.0
 
     while remaining:
         # Pick the candidate with the highest current MMR score
@@ -262,7 +265,7 @@ def _mmr_select(
             if overlap > max_overlap[idx]:
                 max_overlap[idx] = overlap
             diversity = 1.0 - max_overlap[idx]
-            remaining[idx] = lambda_mmr * scores[idx] + (1.0 - lambda_mmr) * diversity
+            remaining[idx] = lambda_mmr * scores[idx] + inv_lambda * diversity
 
     return selected_indices
 
@@ -310,7 +313,15 @@ def _boundary_aware_truncate(text: str, max_chars: int) -> str:
     # Hard truncation with ellipsis (guard against implausibly small max_chars)
     if max_chars < 4:
         return text[:max_chars]
-    return text[:max_chars - 3] + "..."
+    is_cjk = any(
+        "一" <= c <= "鿿"
+        or "㐀" <= c <= "䶿"
+        or "぀" <= c <= "ゟ"
+        or "゠" <= c <= "ヿ"
+        for c in text[:max_chars]
+    )
+    ellipsis = "……" if is_cjk else "..."
+    return text[:max_chars - len(ellipsis)] + ellipsis
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -397,11 +408,15 @@ def _tokenize(text: str) -> list[str]:
     """
     tokens: list[str] = []
     for char in text:
+        cp = ord(char)
         if (
-            "\u4e00" <= char <= "\u9fff"  # CJK Unified Ideographs
-            or "\u3400" <= char <= "\u4dbf"  # CJK Extension A
-            or "\u3040" <= char <= "\u309f"  # Hiragana
-            or "\u30a0" <= char <= "\u30ff"  # Katakana
+            0x4E00 <= cp <= 0x9FFF   # CJK Unified Ideographs
+            or 0x3400 <= cp <= 0x4DBF  # CJK Extension A
+            or 0xF900 <= cp <= 0xFAFF  # CJK Compatibility Ideographs
+            or 0x20000 <= cp <= 0x2EBEF  # CJK Extensions B-I
+            or 0x3040 <= cp <= 0x309F  # Hiragana
+            or 0x30A0 <= cp <= 0x30FF  # Katakana
+            or 0xFF65 <= cp <= 0xFF9F  # Halfwidth Katakana
         ):
             tokens.append(char)
     words = re.findall(r"[a-zA-Z0-9]+", text)
@@ -466,9 +481,9 @@ def _length_score(sentence: str) -> float:
     if length < 10:
         return 0.15
     if length < 20:
-        return 0.5
+        return 0.15 + 0.75 * (length - 10) / 10
     if length <= 150:
-        return 0.9 + 0.1 * min((length - 20) / 130, 1.0)
+        return 0.9 + 0.1 * (length - 20) / 130
     if length <= 200:
-        return 0.6
-    return 0.3
+        return 1.0 - 0.4 * (length - 150) / 50
+    return max(0.3, 0.6 - 0.3 * (length - 200) / 300)
