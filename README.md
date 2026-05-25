@@ -155,7 +155,7 @@ for a specific scenario:
 | **Coverage**       | Limited to what existing sentences express                        | Can fuse information across sentences                  |
 | **Token cost**     | Zero (runs before LLM)                                            | Consumes input + output tokens                         |
 | **Context window** | Compression runs outside the LLM; output still uses context space | Must fit the full document **plus** the summary output |
-| **Speed**          | Under 3 second for most documents     | Model-dependent (seconds to minutes)                   |
+| **Speed**          | Under 3 seconds for most documents     | Model-dependent (seconds to minutes)                   |
 | **Language**       | Chinese / Japanese / English                                      | Model-dependent                                        |
 
 ### When It Works Well
@@ -195,7 +195,7 @@ achieved lower redundancy (Self-BLEU) without sacrificing ROUGE by adding a
 differentiable diversity loss — the same principle behind MMR [2]. DL-MMR (NAACL 2025) preserved MMR's informativeness
 while reducing computation by 500,000× [3]. For Japanese, MMR with
 doc2vec embeddings on Nikkei news achieved ~27% content-level agreement
-with human-written summaries (non-matching outputs were also judged plausible) [4]; MMR combined with NMT embeddings on
+with human-written summaries, and outputs diverging from the reference were also judged plausible [4]; MMR combined with NMT embeddings on
 Japanese lecture transcripts outperformed baselines by over 20% [5].
 
 > These benchmarks use neural embeddings (Word2Vec / BERT) for sentence

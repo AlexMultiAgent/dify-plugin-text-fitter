@@ -128,6 +128,44 @@ _ABBREVIATIONS = frozenset({
     "fig", "eq", "approx", "esp",
 })
 
+# Unicode codepoint ranges shared by tokenizer and CJK text detection.
+# Extracted once so _tokenize and _boundary_aware_truncate stay in sync.
+_CJK_CP_RANGES: tuple[tuple[int, int], ...] = (
+    (0x4E00, 0x9FFF),   # CJK Unified Ideographs
+    (0x3400, 0x4DBF),   # CJK Unified Ideographs Extension A
+    (0xF900, 0xFAFF),   # CJK Compatibility Ideographs
+    (0x20000, 0x2EBEF), # CJK Unified Ideographs Extensions B-I
+    (0x3040, 0x309F),   # Hiragana
+    (0x30A0, 0x30FF),   # Katakana
+    (0xFF65, 0xFF9F),   # Halfwidth Katakana
+)
+
+
+def _is_cjk_char(c: str) -> bool:
+    """Return True if *c* is a CJK ideograph or Japanese kana character."""
+    cp = ord(c)
+    return (
+        0x4E00 <= cp <= 0x9FFF
+        or 0x3400 <= cp <= 0x4DBF
+        or 0xF900 <= cp <= 0xFAFF
+        or 0x20000 <= cp <= 0x2EBEF
+        or 0x3040 <= cp <= 0x309F
+        or 0x30A0 <= cp <= 0x30FF
+        or 0xFF65 <= cp <= 0xFF9F
+    )
+
+# Pre-compiled abbreviation protection regexes — compiled once at import time
+# rather than on every _split_sentences call.
+_ABBREV_PATTERN = re.compile(
+    r"\b(" + "|".join(_ABBREVIATIONS) + r")\.\s+(?=[A-Z0-9一-鿿぀-ゟ゠-ヿ])",
+    re.IGNORECASE,
+)
+
+_MULTI_DOT_ABBREV_PATTERN = re.compile(
+    r"\b(i\.e|e\.g)\.(\s+)(?=[A-Z0-9一-鿿぀-ゟ゠-ヿ])",
+    re.IGNORECASE,
+)
+
 
 def _extract_key_sentences(
     text: str,
@@ -178,9 +216,10 @@ def _extract_key_sentences(
                 filtered_sentences, filtered_scores, filtered_tokens,
                 max_chars, diversity,
             )
-            # Map back to original indices for position-based reordering
-            kept_list = sorted(kept)
-            selected_indices = [kept_list[i] for i in selected_indices]
+            if selected_indices:
+                # Map back to original indices for position-based reordering
+                kept_list = sorted(kept)
+                selected_indices = [kept_list[i] for i in selected_indices]
             algorithm = "mmr_prefilter"
         else:
             selected_indices = _mmr_select(
@@ -313,13 +352,7 @@ def _boundary_aware_truncate(text: str, max_chars: int) -> str:
     # Hard truncation with ellipsis (guard against implausibly small max_chars)
     if max_chars < 4:
         return text[:max_chars]
-    is_cjk = any(
-        "一" <= c <= "鿿"
-        or "㐀" <= c <= "䶿"
-        or "぀" <= c <= "ゟ"
-        or "゠" <= c <= "ヿ"
-        for c in text[:max_chars]
-    )
+    is_cjk = any(_is_cjk_char(c) for c in text[:max_chars])
     ellipsis = "……" if is_cjk else "..."
     return text[:max_chars - len(ellipsis)] + ellipsis
 
@@ -335,11 +368,15 @@ def _split_sentences(text: str) -> list[str]:
     # same character classes as the sentence-split regex below, otherwise
     # an abbreviation followed by CJK/digit (e.g. "Dr. 张三") would still
     # be split because the protection misses it but the split regex catches it.
-    abbrev_pattern = re.compile(
-        r"\b(" + "|".join(_ABBREVIATIONS) + r")\.\s+(?=[A-Z0-9一-鿿぀-ゟ゠-ヿ])",
-        re.IGNORECASE,
+    text = _ABBREV_PATTERN.sub(
+        lambda m: m.group(0).replace(".", "\x00"), text
     )
-    text = abbrev_pattern.sub(lambda m: m.group(0).replace(".", "\x00"), text)
+
+    # Protect multi-dot abbreviations (i.e., e.g.) — the single-dot pattern
+    # above cannot catch these because the internal dot breaks the match.
+    text = _MULTI_DOT_ABBREV_PATTERN.sub(
+        lambda m: m.group(0).replace(".", "\x00"), text
+    )
 
     # CJK fullwidth sentence-ending punctuation (Chinese / Japanese)
     # Note: ；(fullwidth semicolon) is excluded — in Chinese it separates
@@ -408,16 +445,7 @@ def _tokenize(text: str) -> list[str]:
     """
     tokens: list[str] = []
     for char in text:
-        cp = ord(char)
-        if (
-            0x4E00 <= cp <= 0x9FFF   # CJK Unified Ideographs
-            or 0x3400 <= cp <= 0x4DBF  # CJK Extension A
-            or 0xF900 <= cp <= 0xFAFF  # CJK Compatibility Ideographs
-            or 0x20000 <= cp <= 0x2EBEF  # CJK Extensions B-I
-            or 0x3040 <= cp <= 0x309F  # Hiragana
-            or 0x30A0 <= cp <= 0x30FF  # Katakana
-            or 0xFF65 <= cp <= 0xFF9F  # Halfwidth Katakana
-        ):
+        if _is_cjk_char(char):
             tokens.append(char)
     words = re.findall(r"[a-zA-Z0-9]+", text)
     tokens.extend(w.lower() for w in words if len(w) > 1)
@@ -480,7 +508,7 @@ def _length_score(sentence: str) -> float:
     length = len(sentence)
     if length < 10:
         return 0.15
-    if length < 20:
+    if length <= 20:
         return 0.15 + 0.75 * (length - 10) / 10
     if length <= 150:
         return 0.9 + 0.1 * (length - 20) / 130
