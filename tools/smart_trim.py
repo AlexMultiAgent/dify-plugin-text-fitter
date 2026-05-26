@@ -128,17 +128,6 @@ _ABBREVIATIONS = frozenset({
     "fig", "eq", "approx", "esp",
 })
 
-# Unicode codepoint ranges shared by tokenizer and CJK text detection.
-# Extracted once so _tokenize and _boundary_aware_truncate stay in sync.
-_CJK_CP_RANGES: tuple[tuple[int, int], ...] = (
-    (0x4E00, 0x9FFF),   # CJK Unified Ideographs
-    (0x3400, 0x4DBF),   # CJK Unified Ideographs Extension A
-    (0xF900, 0xFAFF),   # CJK Compatibility Ideographs
-    (0x20000, 0x2EBEF), # CJK Unified Ideographs Extensions B-I
-    (0x3040, 0x309F),   # Hiragana
-    (0x30A0, 0x30FF),   # Katakana
-    (0xFF65, 0xFF9F),   # Halfwidth Katakana
-)
 
 
 def _is_cjk_char(c: str) -> bool:
