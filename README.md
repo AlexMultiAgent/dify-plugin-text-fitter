@@ -97,15 +97,8 @@ sentence splitting and abbreviation protection.
 ## Effectiveness & Boundaries
 
 This plugin is not a replacement for LLM summarization. It selects complete
-verbatim sentences from the original text — it never rewrites or paraphrases.
-
-| Aspect | Text Fitter (this plugin) | LLM Summarization |
-| --- | --- | --- |
-| **Output** | Original sentences, verbatim | Rewritten abstract |
-| **Fidelity** | High — extracts verbatim, no rewriting | May introduce generalization errors |
-| **Token cost** | Zero (runs before LLM) | Consumes input + output tokens |
-| **Context window** | Compression runs outside the LLM | Must fit full document plus summary |
-| **Language** | Chinese / Japanese / English | Model-dependent |
+verbatim sentences from the original text using extractive summarization, a
+long-established NLP approach — it never rewrites or paraphrases.
 
 ### When It Works Well
 
