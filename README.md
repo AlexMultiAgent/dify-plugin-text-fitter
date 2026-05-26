@@ -1,7 +1,7 @@
 # Text Fitter
 
 A Dify tool plugin that ensures text fits within LLM context window limits
-via extractive summarization. Supports Chinese (Simplified &
+via intelligent extractive summarization. Supports Chinese (Simplified &
 Traditional), Japanese, and English text.
 
 ## Why
