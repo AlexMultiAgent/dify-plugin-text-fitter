@@ -56,7 +56,7 @@ As a rough guide, using the Qwen3 BBPE tokenizer (~151K vocab; Qwen3 Technical R
 > Always verify with your specific model when precise budgeting is critical.
 
 Reserve ~80% of the context window for input text, leaving headroom for
-prompt templates and output generation.
+the next LLM node's prompt templates and output generation.
 
 ## Parameters
 
