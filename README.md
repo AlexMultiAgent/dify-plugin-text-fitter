@@ -55,7 +55,7 @@ As a rough guide, using the Qwen3 BBPE tokenizer (~151K vocab; Qwen3 Technical R
 > Token-to-character ratios vary across tokenizers (source: TokLens, ACL 2026 SRW).
 > Always verify with your specific model when precise budgeting is critical.
 
-Reserve ~80% of the context window for input text, leaving headroom for
+Reserve ~80% of the context window for input text, leaving ~20% headroom for
 the next LLM node's prompt templates and output generation.
 
 ## Parameters
