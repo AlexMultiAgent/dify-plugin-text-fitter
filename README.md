@@ -124,6 +124,9 @@ may cut at punctuation, whitespace, or a hard boundary.
 Input text → Sentence Split → Score → Select → Reorder by position → Output
 ```
 
+See [Architecture](docs/architecture.md) for the component map, detailed
+algorithm flow, failure handling, and performance guarantees.
+
 ### Sentence Segmentation
 
 Regex-based sentence splitting aware of CJK, Japanese, and English
