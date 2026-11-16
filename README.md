@@ -4,6 +4,14 @@ A Dify tool plugin that ensures text fits within LLM context window limits
 via intelligent extractive summarization. Supports Chinese (Simplified &
 Traditional), Japanese, and English text.
 
+> **Source**: [github.com/AlexMultiAgent/dify-plugin-text-fitter](https://github.com/AlexMultiAgent/dify-plugin-text-fitter)
+
+## Requirements
+
+- **No API keys or credentials** — the plugin runs in-process and calls no external service.
+- **No network connection** — all processing is local and in-memory.
+- Dify platform (Community Edition or Cloud) with plugin support enabled.
+
 ## Why
 
 Locally deployed or resource-constrained LLM instances often have a smaller
@@ -124,8 +132,9 @@ may cut at punctuation, whitespace, or a hard boundary.
 Input text → Sentence Split → Score → Select → Reorder by position → Output
 ```
 
-See [Architecture](docs/architecture.md) for the component map, detailed
-algorithm flow, failure handling, and performance guarantees.
+See [Architecture](https://github.com/AlexMultiAgent/dify-plugin-text-fitter/blob/main/docs/architecture.md)
+for the component map, detailed algorithm flow, failure handling, and
+performance guarantees.
 
 ### Sentence Segmentation
 
@@ -201,7 +210,28 @@ ellipsis.
 ## Privacy
 
 This plugin processes all text locally. No data is transmitted to external
-servers, APIs, or third-party services. See [PRIVACY.md](PRIVACY.md) for details.
+servers, APIs, or third-party services. See
+[PRIVACY.md](https://github.com/AlexMultiAgent/dify-plugin-text-fitter/blob/main/PRIVACY.md)
+for details.
+
+## Changelog
+
+### 0.1.0
+
+- **Selected text is now returned verbatim.** The previous release rewrote the
+  input while splitting it — inserting newlines after sentence-ending
+  punctuation and stripping whitespace. Sentences are now located by offset, so
+  punctuation, spacing, and line boundaries are preserved exactly.
+- **Sentence segmentation covers more cases**: closing quotes and brackets,
+  initialisms (`U.S.`), personal initials (`John F. Kennedy`), decimal numbers
+  (`3.14`), and CRLF line endings.
+- **The internal-error fallback honours `max_chars`** instead of returning the
+  untrimmed input.
+- **`algorithm` reports one additional outcome**: `error_truncation`.
+- **Localization fixes** for the Simplified Chinese, Traditional Chinese, and
+  Japanese labels.
+- **Packaging hygiene**: development files (`.env.example`, test caches) are no
+  longer shipped inside the plugin package.
 
 ## Development
 
@@ -210,7 +240,7 @@ uv sync --locked
 uv run python -m unittest discover -s tests -v
 uvx ruff check main.py provider tools tests
 uv audit --locked
-dify plugin package . -o dist/text-fitter-0.1.0.difypkg
+dify plugin package . -o dist/text_fitter-0.1.0.difypkg
 ```
 
 ## Support
@@ -221,4 +251,4 @@ GitHub Issues: <https://github.com/AlexMultiAgent/dify-plugin-text-fitter/issues
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/AlexMultiAgent/dify-plugin-text-fitter/blob/main/LICENSE)

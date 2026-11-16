@@ -97,7 +97,7 @@ score = 0.3 * position + 0.5 * keyword_density + 0.2 * length
 - Length penalizes very short filler and excessively long spans.
 
 Tokenization is performed once per invocation. The same token lists are reused
-by scoring, MMR overlap calculation, and deduplication.
+by scoring and by the MMR overlap calculation.
 
 ## Selection
 

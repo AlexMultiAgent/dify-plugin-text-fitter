@@ -18,7 +18,5 @@ cookies.txt
 .verification.dify.json
 uv.lock
 tests/
+docs/
 node_modules/
-_assets/architecture/
-model-training-overview/
-model-training-pptx/
