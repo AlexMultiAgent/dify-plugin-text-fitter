@@ -1,9 +1,11 @@
 __pycache__/
 .venv/
-uv.lock
+.pytest_cache/
+.ruff_cache/
 *.pyc
 *.pyo
 .verification.dify.json
 *.difypkg
+dist/
 cookies.txt
 _test_*.py

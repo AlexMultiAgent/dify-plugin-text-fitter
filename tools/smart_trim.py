@@ -8,12 +8,26 @@ from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 
 
+def _normalise_max_chars(value: Any, default: int = 30000) -> int:
+    try:
+        max_chars = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max_chars if max_chars > 0 else default
+
+
 class SmartTrimTool(Tool):
     def _yield_outputs(
-        self, text: str, original_length: int, processed_length: int,
-        was_trimmed: bool, algorithm: str,
+        self,
+        text: str,
+        original_length: int,
+        processed_length: int,
+        was_trimmed: bool,
+        algorithm: str,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        ratio = 1.0 if original_length == 0 else original_length / max(processed_length, 1)
+        ratio = (
+            1.0 if original_length == 0 else original_length / max(processed_length, 1)
+        )
         compression_ratio = round(ratio, 4)
         yield self.create_text_message(text)
         yield self.create_variable_message("original_char_count", original_length)
@@ -21,49 +35,46 @@ class SmartTrimTool(Tool):
         yield self.create_variable_message("compression_ratio", compression_ratio)
         yield self.create_variable_message("was_trimmed", was_trimmed)
         yield self.create_variable_message("algorithm", algorithm)
-        yield self.create_json_message({
-            "text": text,
-            "original_char_count": original_length,
-            "processed_char_count": processed_length,
-            "compression_ratio": compression_ratio,
-            "was_trimmed": was_trimmed,
-            "algorithm": algorithm,
-        })
+        yield self.create_json_message(
+            {
+                "text": text,
+                "original_char_count": original_length,
+                "processed_char_count": processed_length,
+                "compression_ratio": compression_ratio,
+                "was_trimmed": was_trimmed,
+                "algorithm": algorithm,
+            }
+        )
 
     def _invoke(
         self, tool_parameters: dict[str, Any]
     ) -> Generator[ToolInvokeMessage, None, None]:
         try:
             yield from self._do_invoke(tool_parameters)
-        except Exception:
+        # The fallback must cover any processing failure to enforce max_chars.
+        except Exception:  # noqa: BLE001
             import sys
             import traceback
-            exc = traceback.format_exc()
-            print(exc, file=sys.stderr, flush=True)
-            fallback_text = tool_parameters.get("text") or ""
+
+            traceback.print_exc(file=sys.stderr)
+            raw_text = tool_parameters.get("text")
+            fallback_text = raw_text if isinstance(raw_text, str) else ""
             fallback_len = len(fallback_text)
+            max_chars = _normalise_max_chars(tool_parameters.get("max_chars"))
+            safe_text = _boundary_aware_truncate(fallback_text, max_chars)
             yield from self._yield_outputs(
-                text=fallback_text,
+                text=safe_text,
                 original_length=fallback_len,
-                processed_length=fallback_len,
-                was_trimmed=False,
-                algorithm="passthrough",
+                processed_length=len(safe_text),
+                was_trimmed=fallback_len > len(safe_text),
+                algorithm="error_truncation",
             )
-            yield self.create_variable_message("error", exc)
-            yield self.create_json_message({
-                "error": exc,
-            })
 
     def _do_invoke(
         self, tool_parameters: dict[str, Any]
     ) -> Generator[ToolInvokeMessage, None, None]:
         text = tool_parameters.get("text") or ""
-        try:
-            max_chars = int(tool_parameters.get("max_chars", 30000))
-        except (TypeError, ValueError):
-            max_chars = 30000
-        if max_chars <= 0:
-            max_chars = 30000
+        max_chars = _normalise_max_chars(tool_parameters.get("max_chars"))
 
         method = tool_parameters.get("method", "mmr")
         if method not in ("greedy", "mmr"):
@@ -90,7 +101,8 @@ class SmartTrimTool(Tool):
             return
 
         processed_text, algorithm = _extract_key_sentences(
-            text, max_chars,
+            text,
+            max_chars,
             method=method,
             diversity=diversity,
         )
@@ -119,15 +131,58 @@ _MMR_FULL_LIMIT = 5000
 _MMR_CANDIDATE_CAP = 5000
 
 # Common English abbreviations that should NOT be treated as sentence boundaries.
-_ABBREVIATIONS = frozenset({
-    "mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "ave", "blvd",
-    "inc", "corp", "ltd", "co", "etc", "vs", "viz", "ie", "eg",
-    "apt", "dept", "div", "est", "gov", "mil", "op", "ord", "pvt",
-    "rep", "sen", "sgt", "capt", "cmdr", "lt", "col", "gen",
-    "rev", "hon", "pres", "vp", "ceo", "cfo", "coo", "ct",
-    "fig", "eq", "approx", "esp",
-})
-
+_ABBREVIATIONS = frozenset(
+    {
+        "mr",
+        "mrs",
+        "ms",
+        "dr",
+        "prof",
+        "sr",
+        "jr",
+        "st",
+        "ave",
+        "blvd",
+        "inc",
+        "corp",
+        "ltd",
+        "co",
+        "etc",
+        "vs",
+        "viz",
+        "ie",
+        "eg",
+        "apt",
+        "dept",
+        "div",
+        "est",
+        "gov",
+        "mil",
+        "op",
+        "ord",
+        "pvt",
+        "rep",
+        "sen",
+        "sgt",
+        "capt",
+        "cmdr",
+        "lt",
+        "col",
+        "gen",
+        "rev",
+        "hon",
+        "pres",
+        "vp",
+        "ceo",
+        "cfo",
+        "coo",
+        "ct",
+        "fig",
+        "eq",
+        "approx",
+        "esp",
+    }
+)
 
 
 def _is_cjk_char(c: str) -> bool:
@@ -143,6 +198,7 @@ def _is_cjk_char(c: str) -> bool:
         or 0xFF65 <= cp <= 0xFF9F
     )
 
+
 # Pre-compiled abbreviation protection regexes — compiled once at import time
 # rather than on every _split_sentences call.
 _ABBREV_PATTERN = re.compile(
@@ -150,10 +206,17 @@ _ABBREV_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-_MULTI_DOT_ABBREV_PATTERN = re.compile(
-    r"\b(i\.e|e\.g)\.(\s+)(?=[A-Z0-9一-鿿぀-ゟ゠-ヿ])",
-    re.IGNORECASE,
+_INITIALISM_PATTERN = re.compile(r"(?<![A-Za-z0-9])(?:[A-Za-z]\.){2,}")
+_MIDDLE_INITIAL_PATTERN = re.compile(r"(\b[A-Z][a-z]+\s)([A-Z])\.(?=\s+[A-Z][a-z]+)")
+
+_CLOSING_PUNCTUATION = "\"'”’」』）)]}】》〉〕］｝"
+_CJK_SENTENCE_END_PATTERN = re.compile(
+    rf"[。！？…]+[{re.escape(_CLOSING_PUNCTUATION)}]*\s*"
 )
+_ENGLISH_SENTENCE_END_PATTERN = re.compile(
+    rf"[.!?]+[{re.escape(_CLOSING_PUNCTUATION)}]*(?:\s+)(?=[A-Z0-9一-鿿぀-ゟ゠-ヿ])"
+)
+_NEWLINE_BOUNDARY_PATTERN = re.compile(r"\r?\n+")
 
 
 def _extract_key_sentences(
@@ -192,18 +255,17 @@ def _extract_key_sentences(
             # Pre-filter to a fixed-size candidate pool before MMR.
             # The pre-filter uses the same scores, so only the
             # diversity penalty is computed on the reduced set.
-            ranked = sorted(
-                enumerate(scores), key=lambda x: x[1], reverse=True
-            )
-            kept = set(i for i, _ in ranked[:_MMR_CANDIDATE_CAP])
+            ranked = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
+            kept = {i for i, _ in ranked[:_MMR_CANDIDATE_CAP]}
             filtered_sentences = [s for i, s in enumerate(sentences) if i in kept]
             filtered_scores = [s for i, s in enumerate(scores) if i in kept]
-            filtered_tokens = [
-                t for i, t in enumerate(sentence_tokens) if i in kept
-            ]
+            filtered_tokens = [t for i, t in enumerate(sentence_tokens) if i in kept]
             selected_indices = _mmr_select(
-                filtered_sentences, filtered_scores, filtered_tokens,
-                max_chars, diversity,
+                filtered_sentences,
+                filtered_scores,
+                filtered_tokens,
+                max_chars,
+                diversity,
             )
             if selected_indices:
                 # Map back to original indices for position-based reordering
@@ -212,7 +274,11 @@ def _extract_key_sentences(
             algorithm = "mmr_prefilter"
         else:
             selected_indices = _mmr_select(
-                sentences, scores, sentence_tokens, max_chars, diversity,
+                sentences,
+                scores,
+                sentence_tokens,
+                max_chars,
+                diversity,
             )
             algorithm = "mmr"
 
@@ -290,8 +356,7 @@ def _mmr_select(
         # newly-selected sentence instead of all previously-selected ones
         for idx in list(remaining):
             overlap = _token_overlap_ratio(sentence_tokens[idx], newly_selected)
-            if overlap > max_overlap[idx]:
-                max_overlap[idx] = overlap
+            max_overlap[idx] = max(max_overlap[idx], overlap)
             diversity = 1.0 - max_overlap[idx]
             remaining[idx] = lambda_mmr * scores[idx] + inv_lambda * diversity
 
@@ -326,8 +391,7 @@ def _boundary_aware_truncate(text: str, max_chars: int) -> str:
     last_punct = -1
     for punct in ["。", "！", "？", ".", "!", "?"]:
         pos = chunk.rfind(punct)
-        if pos > last_punct:
-            last_punct = pos
+        last_punct = max(last_punct, pos)
 
     if last_punct > max_chars * 0.5:
         # Keep at least 50% of the budget — don't truncate too aggressively
@@ -343,7 +407,7 @@ def _boundary_aware_truncate(text: str, max_chars: int) -> str:
         return text[:max_chars]
     is_cjk = any(_is_cjk_char(c) for c in text[:max_chars])
     ellipsis = "……" if is_cjk else "..."
-    return text[:max_chars - len(ellipsis)] + ellipsis
+    return text[: max_chars - len(ellipsis)] + ellipsis
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -352,44 +416,37 @@ def _split_sentences(text: str) -> list[str]:
     Handles edge cases: decimal numbers (3.14), abbreviations (Mr.),
     ellipsis (... / ……), and CJK punctuation variants.
     """
-    # Protect known abbreviations from being split by replacing their
-    # trailing period with a placeholder. The lookahead must cover the
-    # same character classes as the sentence-split regex below, otherwise
-    # an abbreviation followed by CJK/digit (e.g. "Dr. 张三") would still
-    # be split because the protection misses it but the split regex catches it.
-    text = _ABBREV_PATTERN.sub(
-        lambda m: m.group(0).replace(".", "\x00"), text
+    # Protect periods in a same-length copy so boundary offsets still map
+    # directly to the original text.
+    protected = _INITIALISM_PATTERN.sub(
+        lambda match: match.group(0).replace(".", "\x00"), text
+    )
+    protected = _MIDDLE_INITIAL_PATTERN.sub(
+        lambda match: match.group(1) + match.group(2) + "\x00",
+        protected,
+    )
+    protected = _ABBREV_PATTERN.sub(
+        lambda match: match.group(0).replace(".", "\x00"),
+        protected,
     )
 
-    # Protect multi-dot abbreviations (i.e., e.g.) — the single-dot pattern
-    # above cannot catch these because the internal dot breaks the match.
-    text = _MULTI_DOT_ABBREV_PATTERN.sub(
-        lambda m: m.group(0).replace(".", "\x00"), text
-    )
+    boundary_ends = {
+        match.end()
+        for pattern in (
+            _CJK_SENTENCE_END_PATTERN,
+            _ENGLISH_SENTENCE_END_PATTERN,
+            _NEWLINE_BOUNDARY_PATTERN,
+        )
+        for match in pattern.finditer(protected)
+    }
 
-    # CJK fullwidth sentence-ending punctuation (Chinese / Japanese)
-    # Note: ；(fullwidth semicolon) is excluded — in Chinese it separates
-    # clauses within a sentence, not sentence boundaries.
-    text = re.sub(r"([。！？])(?=[^\n])", r"\1\n", text)
-
-    # CJK closing brackets that often end sentences (Japanese)
-    text = re.sub(r"([」』])(?=[^\n])", r"\1\n", text)
-
-    # English halfwidth sentence-ending punctuation followed by capital or CJK
-    text = re.sub(r"([.!?])(\s+)(?=[A-Z一-鿿぀-ゟ゠-ヿ])", r"\1\2\n", text)
-
-    # Ellipsis followed by capital or CJK
-    # English: 3+ dots; CJK: 2+ … characters (U+2026)
-    text = re.sub(r"(\.{3,}|…{2,})(?=[A-Z一-鿿぀-ゟ゠-ヿ])", r"\1\n", text)
-
-    # Restore abbreviation periods
-    text = text.replace("\x00", ".")
-
-    sentences = []
-    for sent in re.split(r"\n+", text):
-        stripped = sent.strip()
-        if stripped:
-            sentences.append(stripped)
+    sentences: list[str] = []
+    start = 0
+    for end in sorted(boundary_ends | {len(text)}):
+        sentence = text[start:end]
+        if sentence.strip():
+            sentences.append(sentence)
+        start = end
     return sentences
 
 

@@ -1,8 +1,15 @@
 .git/
+.github/
+.gitattributes
 .gitignore
 .difyignore
+.env.example
 __pycache__/
 .venv/
+.remember/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 *.pyc
 *.pyo
 _test_*.py
@@ -10,3 +17,8 @@ _test_*.py
 cookies.txt
 .verification.dify.json
 uv.lock
+tests/
+node_modules/
+_assets/architecture/
+model-training-overview/
+model-training-pptx/

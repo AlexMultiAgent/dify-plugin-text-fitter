@@ -15,7 +15,7 @@ with a context-length error.
 This plugin acts as a pre-processing guard: it measures the input, and if it
 exceeds a user-configured threshold, trims it by extracting only the
 highest-scoring sentences — before the text ever reaches the LLM. No API
-keys, no network calls, no external dependencies.
+keys, no network calls, and no external NLP dependencies.
 
 ## Installation
 
@@ -96,9 +96,10 @@ sentence splitting and abbreviation protection.
 
 ## Effectiveness & Boundaries
 
-This plugin is not a replacement for LLM summarization. It selects complete
-verbatim sentences from the original text using extractive summarization, a
-long-established NLP approach — it never rewrites or paraphrases.
+This plugin is not a replacement for LLM summarization. It selects source
+spans from the original text using extractive summarization, preserving their
+original punctuation, whitespace, and line boundaries. It never rewrites or
+paraphrases selected text.
 
 ### When It Works Well
 
@@ -115,8 +116,9 @@ long-established NLP approach — it never rewrites or paraphrases.
 ## Algorithm
 
 This plugin uses **extractive summarization** — Python standard library only,
-no external NLP dependencies. It selects complete sentences from the original
-text; it never rewrites, paraphrases, or cuts mid-sentence.
+no external NLP dependencies. Sentence selection returns original source spans.
+If no complete sentence fits the budget, the documented boundary-aware fallback
+may cut at punctuation, whitespace, or a hard boundary.
 
 ```
 Input text → Sentence Split → Score → Select → Reorder by position → Output
@@ -125,7 +127,8 @@ Input text → Sentence Split → Score → Select → Reorder by position → O
 ### Sentence Segmentation
 
 Regex-based sentence splitting aware of CJK, Japanese, and English
-punctuation conventions, with abbreviation protection.
+punctuation conventions, quoted sentence endings, initialisms (`U.S.`),
+personal initials (`John F. Kennedy`), and common abbreviations.
 
 | Language | Sentence-ending markers                        |
 | -------- | ---------------------------------------------- |
@@ -175,6 +178,7 @@ The `algorithm` output variable records which variant was actually used:
 | `mmr`                 | method = `"mmr"`, ≤ 5000 sentences | Full MMR on all sentences                                |
 | `mmr_prefilter`       | method = `"mmr"`, > 5000 sentences | Score-ranked pre-filter to top 5000 candidates, then MMR |
 | `boundary_truncation` | emergency fallback                 | No sentence fits budget; cut at sentence/word boundary   |
+| `error_truncation`    | internal error fallback            | Guarantee the output stays within `max_chars`            |
 
 ### Reordering & Fallback
 
@@ -195,6 +199,16 @@ ellipsis.
 
 This plugin processes all text locally. No data is transmitted to external
 servers, APIs, or third-party services. See [PRIVACY.md](PRIVACY.md) for details.
+
+## Development
+
+```bash
+uv sync --locked
+uv run python -m unittest discover -s tests -v
+uvx ruff check main.py provider tools tests
+uv audit --locked
+dify plugin package . -o dist/text-fitter-0.1.0.difypkg
+```
 
 ## Support
 

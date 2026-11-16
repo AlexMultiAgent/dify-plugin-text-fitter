@@ -21,7 +21,7 @@ description:
     redundancy. Handles abbreviations (Mr., Dr. etc.) and CJK/English
     punctuation correctly. Supports Chinese, Japanese, and English text.
     Outputs the processed text plus metadata: original_char_count,
-    processed_char_count, was_trimmed, and algorithm.
+    processed_char_count, compression_ratio, was_trimmed, and algorithm.
 extra:
   python:
     source: tools/smart_trim.py
@@ -60,9 +60,9 @@ parameters:
       ja_JP: 最大文字数
     human_description:
       en_US: >
-        The character limit. Text exceeding this will be trimmed. Set this based
-        on your LLM's actual context window (e.g. --max-model-len 25000 means
-        ~25000 tokens; set max_chars conservatively lower).
+        The character limit. Text exceeding this will be trimmed. This value is
+        measured in characters, not tokens. Convert your available token budget
+        using your model tokenizer and keep headroom for prompts and output.
       zh_Hans: >
         字符数阈值。超过此限制的文本将被裁剪。请根据LLM实际上下文窗口设置
         （如 --max-model-len 25000 表示约25000 tokens，需保守设置）。
@@ -237,4 +237,5 @@ output_schema:
         "greedy" (top-score sentence selection),
         "mmr" (full MMR diversity-aware selection),
         "mmr_prefilter" (MMR with pre-filtered top-5000 candidate pool),
-        "boundary_truncation" (fallback — cut at sentence/word boundary).
+        "boundary_truncation" (fallback — cut at sentence/word boundary),
+        "error_truncation" (internal error fallback that enforces max_chars).
