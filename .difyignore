@@ -3,6 +3,7 @@
 .gitattributes
 .gitignore
 .difyignore
+CLAUDE.md
 .env.example
 __pycache__/
 .venv/
