@@ -10,7 +10,7 @@ Traditional), Japanese, and English text.
 
 - **No API keys or credentials** — the plugin runs in-process and calls no external service.
 - **No network connection** — all processing is local and in-memory.
-- Dify platform (Community Edition or Cloud) with plugin support enabled.
+- Dify platform (Community Edition or Cloud) 1.14.0 or later with plugin support enabled.
 
 ## Why
 
@@ -216,7 +216,7 @@ for details.
 
 ## Changelog
 
-### 0.1.0
+### 0.0.2
 
 - **Selected text is now returned verbatim.** The previous release rewrote the
   input while splitting it — inserting newlines after sentence-ending
@@ -226,7 +226,8 @@ for details.
   initialisms (`U.S.`), personal initials (`John F. Kennedy`), decimal numbers
   (`3.14`), and CRLF line endings.
 - **The internal-error fallback honours `max_chars`** instead of returning the
-  untrimmed input.
+  untrimmed input, and no longer exposes the traceback as an `error` output
+  variable.
 - **`algorithm` reports one additional outcome**: `error_truncation`.
 - **Localization fixes** for the Simplified Chinese, Traditional Chinese, and
   Japanese labels.
@@ -240,7 +241,7 @@ uv sync --locked
 uv run python -m unittest discover -s tests -v
 uvx ruff check main.py provider tools tests
 uv audit --locked
-dify plugin package . -o dist/text_fitter-0.1.0.difypkg
+dify plugin package . -o dist/text_fitter-0.0.2.difypkg
 ```
 
 ## Support

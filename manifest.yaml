@@ -1,4 +1,4 @@
-version: 0.1.0
+version: 0.0.2
 type: plugin
 author: "alexmultiagent"
 name: text_fitter
@@ -26,7 +26,8 @@ plugins:
   tools:
     - provider/text_fitter.yaml
 meta:
-  version: 0.1.0
+  version: 0.0.2
+  minimum_dify_version: "1.14.0"
   arch:
     - amd64
     - arm64
@@ -36,6 +37,8 @@ meta:
     entrypoint: main
 created_at: "2026-11-16T00:00:00.000000Z"
 privacy: ./PRIVACY.md
+repo: https://github.com/AlexMultiAgent/dify-plugin-text-fitter
+contact: zhangven@gmail.com
 tags:
   - productivity
   - utilities
