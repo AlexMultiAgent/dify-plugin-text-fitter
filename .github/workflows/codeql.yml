@@ -1,0 +1,50 @@
+# CodeQL analysis.
+#
+# Free for public repositories on GitHub.com -- no GitHub Advanced Security
+# license required. Results are uploaded to the repository's code scanning
+# tab, where they show up as "CodeQL" alerts alongside any other scanner.
+#
+# The plugin itself is stdlib-only, so the Python queries are the whole
+# surface; there is no second language to matrix over.
+
+name: CodeQL
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    # Weekly, off-peak minute so this does not pile onto the same cron slot
+    # as every other repository's scheduled workflows.
+    - cron: "19 4 * * 1"
+
+permissions:
+  contents: read
+  actions: read
+  packages: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - python
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

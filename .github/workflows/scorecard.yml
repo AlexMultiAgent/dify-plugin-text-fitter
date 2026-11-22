@@ -1,0 +1,57 @@
+# OSSF Scorecard.
+#
+# Free for public repositories. Scorecard measures supply-chain security
+# practices (pinned actions, signed releases, branch protection, ...) and
+# publishes the result both to code scanning and as the OpenSSF badge.
+#
+# publish_results needs id-token: write: scorecard-action v2 uses GitHub's
+# OIDC token to attest that the published result really came from this
+# repository. The checkout drops its credentials afterwards so the token is
+# not left behind in .git/config for the later steps.
+
+name: Scorecard
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    # Weekly, on a different minute than the CodeQL workflow so the two do
+    # not start at the same time.
+    - cron: "33 5 * * 2"
+
+permissions:
+  contents: read
+  security-events: write
+  id-token: write
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard
+        uses: ossf/scorecard-action@v2
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload results to code scanning
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.sarif
+          category: scorecard
+
+      - name: Archive the SARIF report
+        uses: actions/upload-artifact@v4
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 5
