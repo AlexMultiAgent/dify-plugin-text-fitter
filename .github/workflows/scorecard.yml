@@ -2,58 +2,79 @@
 #
 # Free for public repositories. Scorecard measures supply-chain security
 # practices (pinned actions, signed releases, branch protection, ...) and
-# publishes the result both to code scanning and as the OpenSSF badge.
+# publishes the result to code scanning and as the OpenSSF badge.
 #
-# publish_results needs id-token: write: scorecard-action v2 uses GitHub's
-# OIDC token to attest that the published result really came from this
-# repository. The checkout drops its credentials afterwards so the token is
-# not left behind in .git/config for the later steps.
+# The permissions layout follows upstream's examples/scorecard.yml exactly:
+# `permissions: {}` at the workflow level and the two write permissions at
+# the job level. With the writes at workflow level the Scorecard webapp
+# rejects the upload ("global perm is set to write"), so the workflow goes
+# green while publishing nothing -- no badge and no alerts.
 
 name: Scorecard
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
+    branches: [main]
   schedule:
-    # Weekly, on a different minute than the CodeQL workflow so the two do
-    # not start at the same time.
+    # Weekly, on a different minute than the CodeQL cron so the two do not
+    # start at the same time.
     - cron: "33 5 * * 2"
+  branch_protection_rule:
+    # Keeps the Branch-Protection check current. Only the default branch is
+    # supported by Scorecard.
 
-permissions:
-  contents: read
-  security-events: write
-  id-token: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# No workflow-level permissions: Scorecard needs write access only inside the
+# job, and granting it globally makes the upload fail.
+permissions: {}
+
+# Blocks all cache access. Added to GitHub Actions in September 2026, so some
+# workflow linters may not recognize it yet. See:
+# https://github.com/ossf/scorecard-action#workflow-linters
+cache-mode: none
 
 jobs:
   analysis:
     name: Scorecard analysis
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Scorecard only supports the default branch.
+    if: ${{ github.event.repository.default_branch == github.ref_name }}
+    permissions:
+      security-events: write  # Upload SARIF to GitHub code scanning.
+      id-token: write  # Sign results published to api.scorecard.dev.
     steps:
-      - uses: actions/checkout@v4
+      # persist-credentials: false keeps the token out of the local git config,
+      # so it is not left behind for the later steps.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
       - name: Run Scorecard
-        uses: ossf/scorecard-action@23f22cd43608bae7a1f1fa2603d7314dee9538a5 # v2.6.0
+        uses: ossf/scorecard-action@23f22cd43608bae7a1f1fa2603d7314dee9538a5  # v2.6.0
         with:
           results_file: results.sarif
           results_format: sarif
           publish_results: true
-
-      - name: Upload results to code scanning
-        if: always()
-        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
-        with:
-          sarif_file: results.sarif
-          category: scorecard
+          # Fail the step if the Scorecard API rejects the results, so a
+          # silently-unpublished run cannot pass. See:
+          # https://github.com/ossf/scorecard-action#when-publishing-fails
+          fail_on_publish_error: true
 
       - name: Archive the SARIF report
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: scorecard-results
           path: results.sarif
           retention-days: 5
+
+      - name: Upload results to code scanning
+        if: ${{ always() }}
+        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea  # v4.39.4
+        with:
+          sarif_file: results.sarif
+          category: scorecard
