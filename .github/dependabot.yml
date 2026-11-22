@@ -1,0 +1,57 @@
+# Dependabot configuration.
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+
+updates:
+  # Actions pinned by the CI workflow (actions/checkout, actions/setup-python,
+  # astral-sh/setup-uv).
+  - package-ecosystem: "github-actions"
+    directory: "/.github/workflows"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    commit-message:
+      prefix: "chore"
+    labels:
+      - "dependencies"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Python dependencies. The "uv" ecosystem updates pyproject.toml and uv.lock
+  # together; the "pip" ecosystem patches pyproject.toml only and leaves
+  # uv.lock stale, which breaks the `uv sync --locked` CI step.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    commit-message:
+      prefix: "chore"
+    labels:
+      - "dependencies"
+    ignore:
+      # dify-plugin is the only runtime dependency and it is pinned into the
+      # requirements.txt that ships inside the .difypkg. The plugin daemon
+      # installs it from its own package mirror, which lags PyPI, so bumping
+      # the pin can break installation for every user. Upgrade it by hand once
+      # the daemon mirror has caught up.
+      - dependency-name: "dify-plugin"
+    groups:
+      python-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
+          - "minor"
+      python-major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
