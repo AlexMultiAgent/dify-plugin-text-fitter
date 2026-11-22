@@ -237,9 +237,9 @@ for details.
 ## Development
 
 ```bash
-uv sync --locked
+uv sync --locked --group dev
 uv run python -m unittest discover -s tests -v
-uvx ruff check main.py provider tools tests
+uv run ruff check main.py provider tools tests
 uv audit --locked
 dify plugin package . -o dist/text_fitter-0.0.2.difypkg
 ```

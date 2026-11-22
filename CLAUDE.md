@@ -7,14 +7,19 @@ Dify tool plugin that trims text to fit an LLM context window. One tool
 
 | Command | Purpose |
 |---|---|
-| `uv sync --locked` | Install locked deps (CI uses `--locked`) |
+| `uv sync --locked --group dev` | Install locked deps (CI uses `--locked --group dev`) |
 | `uv run python -m unittest discover -s tests -v` | 11 unit tests |
-| `uvx ruff check main.py provider tools tests` | Lint |
-| `uvx ruff format --check main.py provider tools tests` | Format check (CI gate) |
+| `uv run ruff check main.py provider tools tests` | Lint |
+| `uv run ruff format --check main.py provider tools tests` | Format check (CI gate) |
 | `uv audit --locked` | Dependency audit |
 | `dify plugin package . -o dist/text_fitter-<version>.difypkg` | Build marketplace package |
 
 No ruff config exists — ruff runs on defaults (88 columns).
+
+Ruff and pip-audit live in the `dev` dependency group, so `uv run ruff` uses the
+locked version instead of floating on the latest release the way `uvx ruff`
+does. Dependabot manages that group; `dify-plugin` is excluded from it because
+the plugin daemon installs it from its own lagging package mirror.
 
 ## Architecture
 

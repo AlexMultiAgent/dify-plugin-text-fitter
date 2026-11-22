@@ -24,15 +24,15 @@ jobs:
           python-version: "3.12"
 
       - name: Install locked dependencies
-        run: uv sync --locked
+        run: uv sync --locked --group dev
 
       - name: Run unit tests
         run: uv run python -m unittest discover -s tests -v
 
       - name: Run Ruff
         run: |
-          uvx ruff check main.py provider tools tests
-          uvx ruff format --check main.py provider tools tests
+          uv run ruff check main.py provider tools tests
+          uv run ruff format --check main.py provider tools tests
 
       - name: Audit dependencies
         run: uv audit --locked
