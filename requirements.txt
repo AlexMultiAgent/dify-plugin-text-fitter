@@ -1,1 +1,1 @@
-dify-plugin==0.11.0
+dify-plugin==0.11.1
