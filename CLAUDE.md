@@ -37,6 +37,7 @@ tools/smart_trim.yaml      # tool schema: parameters + output_schema
 tools/smart_trim.py        # the entire implementation
 tests/test_smart_trim.py   # regression tests
 tests/fuzz_smart_trim.py   # atheris fuzz target for the output contract
+scripts/verify_package.py  # compares a built .difypkg with the source tree
 .bestpractices.json        # OpenSSF Best Practices self-attestation
 docs/architecture.md       # component map + algorithm flow (Mermaid)
 ```
@@ -133,8 +134,15 @@ caller never sent.
    the version referenced in `docs/architecture.md`, add a `README.md` changelog
    entry. Stay in the `0.0.x` patch series.
 2. `uv lock` — the lockfile embeds the project version.
-3. `dify plugin package . -o dist/text_fitter-<version>.difypkg`, then verify
-   the file list.
+3. Build the package locally and check it against the source tree:
+   ```bash
+   dify plugin package . -o dist/text_fitter-<version>.difypkg
+   python scripts/verify_package.py dist/text_fitter-<version>.difypkg HEAD
+   ```
+   The verifier compares every packaged file with the git blob it came from,
+   so it catches the two drifts that `.difypignore` cannot: a scratch file in
+   the repository root, and a file whose working-tree line endings differ
+   from the committed ones.
 4. Pre-flight the marketplace validators (needs `yq` on PATH):
    ```bash
    git clone --depth 1 https://github.com/langgenius/dify-marketplace-toolkit
@@ -142,8 +150,17 @@ caller never sent.
    python validator/validate-difypkg.py <abs-path-to-pkg> --toolkit-dir . \
      --pr-body-file <pr-body.md> --output-dir <out>
    ```
-5. Tag the commit and publish the GitHub Release with the `.difypkg` asset and
-   its SHA256.
+5. Tag the commit and push the tag. The `Release` workflow builds the package
+   from a clean checkout of the tag, verifies it the same way, attests it and
+   publishes the GitHub Release with the `.difypkg` asset, its SHA256 and the
+   command to verify the attestation:
+
+   ```bash
+   gh attestation verify text_fitter-<version>.difypkg \
+     --repo AlexMultiAgent/dify-plugin-text-fitter
+   ```
+   The workflow pins the Dify plugin CLI by version and checksum; it is a Go
+   binary published with `langgenius/dify-plugin-daemon`, not a Python package.
 6. PR to `langgenius/dify-plugins`: change exactly one `.difypkg` (removing older
    versions in the same directory is allowed), named `<plugin>-<version>.difypkg`.
    The body follows that repo's PR template and must be English-only, with

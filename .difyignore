@@ -23,5 +23,6 @@ cookies.txt
 uv.lock
 tests/
 docs/
+scripts/
 dist/
 node_modules/
