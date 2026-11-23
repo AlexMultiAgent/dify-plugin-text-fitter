@@ -9,8 +9,13 @@
 # it -- the SARIF is uploaded against the old commit, so the check run lands
 # on that commit rather than on the branch head.
 #
-# Usage: Actions -> CodeQL backfill -> Run workflow -> "Commit SHA to
-# analyse". The commit must already exist in the repository.
+# Usage: Actions -> CodeQL backfill -> Run workflow. The two inputs form the
+# upload target: `ref` is the full git ref the results are uploaded to, and
+# `sha` is the commit that ref points at (its HEAD). For the pull request
+# that was merged before this workflow existed:
+#
+#   ref:  refs/pull/1/head
+#   sha:  852d81ff0b36b8e06ad854ef5438c7eca482e19e
 
 name: CodeQL backfill
 
@@ -18,7 +23,11 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Commit SHA to analyse"
+        description: "Full git ref, e.g. refs/pull/1/head"
+        required: true
+        type: string
+      sha:
+        description: "Commit SHA the ref points at"
         required: true
         type: string
 
@@ -40,7 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ inputs.sha }}
           persist-credentials: false
 
       - name: Initialize CodeQL
@@ -53,6 +62,7 @@ jobs:
         uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea  # v4.39.4
         with:
           category: "/language:python"
-          # Upload the SARIF against the analysed commit, not against the
-          # branch head the workflow was dispatched from.
+          # The results are uploaded against the analysed commit rather than
+          # against the branch the workflow was dispatched from.
           ref: ${{ inputs.ref }}
+          sha: ${{ inputs.sha }}
