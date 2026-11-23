@@ -67,8 +67,8 @@ message).
 ## Gotchas
 
 **Packaging.** `.difyignore` alone decides what ships. It must keep `dist/`,
-`docs/`, `tests/`, `scripts/`, `.bestpractices.json`, `*.difypkg`, `.env.example`
-and caches out. Anything left in
+`docs/`, `tests/`, `scripts/`, `.bestpractices.json`, `pyproject.toml`,
+`*.difypkg`, `.env.example` and caches out. Anything left in
 the repository root that is not listed there lands in the release — a scratch
 file, or a stale `.difypkg` — while `dist/` itself is excluded, so build
 output never ships. Verify after every build:

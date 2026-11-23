@@ -21,6 +21,7 @@ _test_*.py
 cookies.txt
 .verification.dify.json
 uv.lock
+pyproject.toml
 tests/
 docs/
 scripts/
