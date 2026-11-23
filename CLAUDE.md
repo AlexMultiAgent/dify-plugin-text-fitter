@@ -129,7 +129,36 @@ To change an existing field, use an automation proposal URL instead, with
 https://www.bestpractices.dev/en/projects/17040/passing/edit?overrides=name%2Cdescription&name=...&description=...
 ```
 
-The proposal pre-fills the form; a human still has to save it.
+The proposal pre-fills the form; a human still has to save it. Editing
+`.bestpractices.json` does **not** reach the live entry on its own: the badge
+app reads the file when the edit form is opened, and — because of the rule
+above — it can only propose values for fields that are still blank.
+
+**A new release makes the version justifications stale.** Five fields name
+the current version: `version_unique_justification`,
+`version_semver_justification`, `version_tags_justification`,
+`release_notes_justification` and `release_notes_vulns_justification`. They
+have to be repointed at the new tag and release. Two things are worth knowing
+before doing it:
+
+- The badge judges the **repository**, not the marketplace. Its criteria
+  (`criteria/criteria.yml` in `ossf/best-practices-badge`) never mention a
+  marketplace, so the evidence — the git tag, the GitHub release, the README
+  changelog — is in place as soon as the release is published. There is
+  nothing to wait for after the marketplace pull request is merged.
+- `release_notes` is a MUST criterion with `met_url_required: true`, so its
+  justification has to carry a URL that resolves. `release_notes_vulns` stays
+  `N/A` unless a release fixes a publicly known vulnerability that already
+  carries a CVE assignment.
+
+Then build the proposal URL from the updated file and open it:
+
+```text
+https://www.bestpractices.dev/en/projects/17040/passing/edit?<field>=<value>&...&overrides=<field>%2C<field>...
+```
+
+Without `overrides=` the five values are shown for review but not applied,
+because they differ from answers a human already gave.
 
 **Branch protection.** `main` requires a pull request, one approving review and
 the `test` and `Analyze (python)` status checks — the job names, not the
@@ -201,9 +230,12 @@ caller never sent.
    ```
    The workflow pins the Dify plugin CLI by version and checksum; it is a Go
    binary published with `langgenius/dify-plugin-daemon`, not a Python package.
-   Once the release is published, refresh the version-related justifications in
-   `.bestpractices.json` — they name the latest published tag, so they go stale
-   as soon as the next one exists.
+   Once the release is published, repoint the five version justifications in
+   `.bestpractices.json` at the new tag and release, and apply them to the
+   live badge entry with an `overrides=` proposal URL — see "The badge
+   self-attestation" above. Do that as part of the release, not after the
+   marketplace pull request is merged: the badge judges the repository, and
+   the repository's evidence is complete as soon as the release exists.
 6. PR to `langgenius/dify-plugins`: change exactly one `.difypkg` (removing older
    versions in the same directory is allowed), named `<plugin>-<version>.difypkg`.
    The body follows that repo's PR template and must be English-only, with
