@@ -8,7 +8,7 @@ Dify tool plugin that trims text to fit an LLM context window. One tool
 | Command | Purpose |
 |---|---|
 | `uv sync --locked --group dev` | Install locked deps (CI uses `--locked --group dev`) |
-| `uv run python -m unittest discover -s tests -v` | 30 unit tests |
+| `uv run python -m unittest discover -s tests -v` | 35 unit tests |
 | `uv run ruff check main.py provider tools tests scripts` | Lint |
 | `uv run ruff format --check main.py provider tools tests scripts` | Format check (CI gate) |
 | `uv audit --locked` | Dependency audit |
@@ -38,6 +38,7 @@ provider/text_fitter.py    # ToolProvider; _validate_credentials is a no-op
 tools/smart_trim.yaml      # tool schema: parameters + output_schema
 tools/smart_trim.py        # the entire implementation
 tests/test_smart_trim.py   # regression tests
+tests/test_bestpractices_json.py  # keeps the badge self-attestation honest
 tests/fuzz_smart_trim.py   # atheris fuzz target for the output contract
 scripts/verify_package.py  # compares a built .difypkg with the source tree
 .bestpractices.json        # OpenSSF Best Practices self-attestation
@@ -51,8 +52,9 @@ message).
 
 ## Workflows
 
-- `ci.yml` — unit tests, Ruff, dependency audit, fuzz job. Required by branch
-  protection.
+- `ci.yml` — unit tests, Ruff, dependency audit, fuzz job. The `test` job is
+  the status check branch protection requires; the `Fuzz` job runs in the same
+  workflow but is not a required check.
 - `codeql.yml` — CodeQL on push, pull request and a weekly cron.
 - `codeql-backfill.yml` — manual; analyses a commit that predates CodeQL.
 - `scorecard.yml` — OpenSSF Scorecard; publishes the score and the alerts.
@@ -130,7 +132,8 @@ https://www.bestpractices.dev/en/projects/17040/passing/edit?overrides=name%2Cde
 The proposal pre-fills the form; a human still has to save it.
 
 **Branch protection.** `main` requires a pull request, one approving review and
-the `CI` and `CodeQL` status checks, with the branch required to be up to date.
+the `test` and `Analyze (python)` status checks — the job names, not the
+workflow names (`CI` and `CodeQL`) — with the branch required to be up to date.
 `enforce_admins` is off on purpose — the repository has a single maintainer, so
 enforcing it would block every merge. Do not "fix" it.
 

@@ -138,7 +138,7 @@ no external NLP dependencies. Sentence selection returns original source spans.
 If no complete sentence fits the budget, the documented boundary-aware fallback
 may cut at punctuation, whitespace, or a hard boundary.
 
-```
+```text
 Input text → Sentence Split → Score → Select → Reorder by position → Output
 ```
 
@@ -154,13 +154,13 @@ personal initials (`John F. Kennedy`), and common abbreviations.
 
 | Language | Sentence-ending markers                        |
 | -------- | ---------------------------------------------- |
-| Chinese  | `。！？`                                          |
-| Japanese | `。！？」』`                                        |
+| Chinese  | `。！？`                                       |
+| Japanese | `。！？」』`                                   |
 | English  | `. ! ?` followed by uppercase or CJK character |
 
 ### Sentence Scoring
 
-```
+```text
 score = 0.3 × position + 0.5 × keyword_density + 0.2 × length
 ```
 
@@ -178,7 +178,7 @@ character budget is exhausted. O(n log n).
 **MMR (Maximal Marginal Relevance)** — Iteratively selects sentences that
 maximize:
 
-```
+```text
 MMR = λ × relevance_score + (1 - λ) × (1 − max_token_overlap_with_selected)
 ```
 
@@ -272,9 +272,9 @@ pass before a merge.
 ## Contributing
 
 Changes reach `main` through a pull request. `main` is protected: the pull
-request has to pass the `CI` and `CodeQL` checks, the branch has to be up to
-date, and one approving review is required before the pull request can be
-merged.
+request has to pass the `CI` and `CodeQL` workflows (their status checks are
+named `test` and `Analyze (python)`), the branch has to be up to date, and one
+approving review is required before the pull request can be merged.
 
 The project is maintained by a single maintainer, so the review requirement
 is not enforced against administrators -- otherwise a one-person project
