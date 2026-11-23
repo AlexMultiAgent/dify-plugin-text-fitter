@@ -19,6 +19,9 @@ on:
     # Weekly, on a different minute than the CodeQL cron so the two do not
     # start at the same time.
     - cron: "33 5 * * 2"
+  workflow_dispatch:
+    # Lets the run be repeated on demand -- e.g. right after adding the
+    # SCORECARD_TOKEN secret, without waiting for the weekly cron.
   branch_protection_rule:
     # Keeps the Branch-Protection check current. Only the default branch is
     # supported by Scorecard.
