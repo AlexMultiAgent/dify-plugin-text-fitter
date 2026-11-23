@@ -13,3 +13,9 @@ dev = [
     "ruff>=0.17.0,<1.0.0",
     "pip-audit>=2.10.0,<3.0.0",
 ]
+# Fuzzing harness only. Atheris ships Linux-only wheels (it bundles
+# libFuzzer), so it lives in its own group: `uv sync --group dev` must keep
+# working on Windows and macOS.
+fuzz = [
+    "atheris>=3.1.0,<4.0.0",
+]

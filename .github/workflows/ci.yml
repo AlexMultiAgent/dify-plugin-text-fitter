@@ -36,3 +36,26 @@ jobs:
 
       - name: Audit dependencies
         run: uv audit --locked
+
+  fuzz:
+    # Atheris bundles libFuzzer and ships Linux-only wheels, so the fuzz
+    # target only runs here and not in the unit-test job.
+    name: Fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d  # v10.4.0
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: Install fuzz dependencies
+        run: uv sync --locked --group fuzz
+
+      - name: Run fuzz target
+        run: uv run --group fuzz python -m tests.fuzz_smart_trim -max_total_time=60
