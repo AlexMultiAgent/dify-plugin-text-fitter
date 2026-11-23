@@ -1,5 +1,6 @@
 .git/
 .github/
+.bestpractices.json
 .gitattributes
 .gitignore
 .difyignore
