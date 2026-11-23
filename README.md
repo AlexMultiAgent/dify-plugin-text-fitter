@@ -262,6 +262,12 @@ with random input by a fuzz target:
 uv run --group fuzz python -m tests.fuzz_smart_trim -max_total_time=60
 ```
 
+New functionality comes with tests. Behaviour changes are covered by a case
+in `tests/test_smart_trim.py`, and the output contract is covered by the fuzz
+target. `CI` runs the unit tests, the linter, the dependency audit and the
+fuzz target on every pull request, and branch protection requires them to
+pass before a merge.
+
 ## Contributing
 
 Changes reach `main` through a pull request. `main` is protected: the pull
