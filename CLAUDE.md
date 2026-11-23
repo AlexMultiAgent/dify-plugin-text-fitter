@@ -9,11 +9,13 @@ Dify tool plugin that trims text to fit an LLM context window. One tool
 |---|---|
 | `uv sync --locked --group dev` | Install locked deps (CI uses `--locked --group dev`) |
 | `uv run python -m unittest discover -s tests -v` | 30 unit tests |
-| `uv run ruff check main.py provider tools tests` | Lint |
-| `uv run ruff format --check main.py provider tools tests` | Format check (CI gate) |
+| `uv run ruff check main.py provider tools tests scripts` | Lint |
+| `uv run ruff format --check main.py provider tools tests scripts` | Format check (CI gate) |
 | `uv audit --locked` | Dependency audit |
 | `uv run --group fuzz python -m tests.fuzz_smart_trim -max_total_time=60` | Fuzz the output contract (Linux only) |
 | `dify plugin package . -o dist/text_fitter-<version>.difypkg` | Build marketplace package |
+| `python scripts/verify_package.py dist/<pkg>.difypkg HEAD` | Check a built package against the source tree |
+| `gh workflow run scorecard.yml --ref main` | Re-run Scorecard (the score and the alerts only refresh on a run) |
 
 No ruff config exists — ruff runs on defaults (88 columns).
 
@@ -47,10 +49,21 @@ Invocation: `_invoke` → `_do_invoke` (normalizes `max_chars`/`method`/`mmr_lam
 `_greedy_select` | `_mmr_select` → `_yield_outputs` (1 text + 5 variable + 1 JSON
 message).
 
+## Workflows
+
+- `ci.yml` — unit tests, Ruff, dependency audit, fuzz job. Required by branch
+  protection.
+- `codeql.yml` — CodeQL on push, pull request and a weekly cron.
+- `codeql-backfill.yml` — manual; analyses a commit that predates CodeQL.
+- `scorecard.yml` — OpenSSF Scorecard; publishes the score and the alerts.
+- `release.yml` — on a `v*` tag: builds, verifies, attests, publishes the
+  release.
+
 ## Gotchas
 
 **Packaging.** `.difyignore` alone decides what ships. It must keep `dist/`,
-`docs/`, `tests/`, `*.difypkg`, `.env.example` and caches out. Anything left in
+`docs/`, `tests/`, `scripts/`, `.bestpractices.json`, `*.difypkg`, `.env.example`
+and caches out. Anything left in
 the repository root that is not listed there lands in the release — a scratch
 file, or a stale `.difypkg` — while `dist/` itself is excluded, so build
 output never ships. Verify after every build:
@@ -112,6 +125,19 @@ https://www.bestpractices.dev/en/projects/17040/passing/edit?overrides=name%2Cde
 ```
 
 The proposal pre-fills the form; a human still has to save it.
+
+**Branch protection.** `main` requires a pull request, one approving review and
+the `CI` and `CodeQL` status checks, with the branch required to be up to date.
+`enforce_admins` is off on purpose — the repository has a single maintainer, so
+enforcing it would block every merge. Do not "fix" it.
+
+**The `dify` CLI is not a project dependency.** It is a Go binary published with
+`langgenius/dify-plugin-daemon` and installed on the machine, so `uv sync` never
+provides it; CI downloads it and pins it by version and checksum.
+
+**The fuzz target needs Linux.** Atheris ships no Windows wheel, so exercise
+`tests/fuzz_smart_trim.py` locally with a stub `atheris` module on `sys.path`;
+the target only uses `atheris.Setup` and `atheris.Fuzz`.
 
 **The output contract is the guarantee.** Output must never exceed `max_chars`,
 including on the internal-error path: that path truncates and reports
