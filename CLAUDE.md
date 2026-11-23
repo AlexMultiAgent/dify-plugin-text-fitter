@@ -8,7 +8,7 @@ Dify tool plugin that trims text to fit an LLM context window. One tool
 | Command | Purpose |
 |---|---|
 | `uv sync --locked --group dev` | Install locked deps (CI uses `--locked --group dev`) |
-| `uv run python -m unittest discover -s tests -v` | 11 unit tests |
+| `uv run python -m unittest discover -s tests -v` | 16 unit tests |
 | `uv run ruff check main.py provider tools tests` | Lint |
 | `uv run ruff format --check main.py provider tools tests` | Format check (CI gate) |
 | `uv audit --locked` | Dependency audit |

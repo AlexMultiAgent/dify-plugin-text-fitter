@@ -140,5 +140,80 @@ class SmartTrimFailureTests(unittest.TestCase):
         self.assertIn("RuntimeError: simulated failure", stderr.getvalue())
 
 
+class TraditionalChineseTests(unittest.TestCase):
+    """Traditional Chinese shares the CJK code path with Simplified Chinese.
+
+    These cases pin that path down: the zh_Hant interface is translated, so
+    the processing side has to keep up.
+    """
+
+    TEXT = (
+        "臺灣位於東亞，氣候溫暖潮濕。臺北是臺灣的首都，也是最大的城市。"
+        "高雄則以港口和工業聞名。這裡的人們說著華語，也使用繁體中文。"
+        "這是一個測試句子，用來驗證繁體中文的處理效果。最後一句話。"
+    )
+
+    def test_traditional_chinese_sentences_split_on_cjk_punctuation(self):
+        sentences = _split_sentences(
+            "臺灣位於東亞，氣候溫暖潮濕。臺北是臺灣的首都。最後一句話。"
+        )
+
+        self.assertEqual(
+            sentences,
+            ["臺灣位於東亞，氣候溫暖潮濕。", "臺北是臺灣的首都。", "最後一句話。"],
+        )
+
+    def test_traditional_chinese_quotes_stay_with_their_sentence(self):
+        sentences = _split_sentences(
+            "他說：「你好。」然後離開了。她讀了《紅樓夢》……這是『經典』。"
+        )
+
+        self.assertEqual(
+            sentences,
+            [
+                "他說：「你好。」",
+                "然後離開了。",
+                "她讀了《紅樓夢》……",
+                "這是『經典』。",
+            ],
+        )
+
+    def test_traditional_chinese_trimming_keeps_original_sentences(self):
+        result, algorithm = _extract_key_sentences(
+            self.TEXT, max_chars=40, method="greedy"
+        )
+
+        self.assertEqual(algorithm, "greedy")
+        self.assertLessEqual(len(result), 40)
+        self.assertEqual(
+            result,
+            "臺灣位於東亞，氣候溫暖潮濕。臺北是臺灣的首都，也是最大的城市。最後一句話。",
+        )
+
+    def test_traditional_chinese_mmr_selection_stays_within_budget(self):
+        result, algorithm = _extract_key_sentences(
+            self.TEXT, max_chars=40, method="mmr"
+        )
+
+        self.assertEqual(algorithm, "mmr")
+        self.assertLessEqual(len(result), 40)
+        # Selected spans must be original sentences, never rewritten text.
+        for sentence in _split_sentences(result):
+            self.assertIn(sentence, self.TEXT)
+
+    def test_traditional_chinese_passthrough_is_unchanged(self):
+        tool = FakeSmartTrimTool.__new__(FakeSmartTrimTool)
+        text = "繁體中文測試。"
+
+        messages = list(tool._invoke({"text": text, "max_chars": 100}))
+
+        self.assertEqual(messages[0], ("text", text))
+        variables = {
+            message[1]: message[2] for message in messages if message[0] == "var"
+        }
+        self.assertEqual(variables["algorithm"], "passthrough")
+        self.assertFalse(variables["was_trimmed"])
+
+
 if __name__ == "__main__":
     unittest.main()
