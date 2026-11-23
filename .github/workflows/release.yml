@@ -46,6 +46,11 @@ jobs:
       attestations: write
       artifact-metadata: write
     env:
+      # The tag the release is cut from. A tag push carries it in
+      # github.ref_name; a manual run carries it in the workflow input.
+      # GITHUB_REF_NAME cannot be used for the second case: a manual run is
+      # dispatched from a branch, so it would name the branch, not the tag.
+      TAG: ${{ inputs.tag || github.ref_name }}
       # The Dify plugin CLI is a Go binary published with the plugin daemon.
       # Both the version and its checksum are pinned: the checksum is what
       # makes the download verifiable.
@@ -86,7 +91,7 @@ jobs:
 
       - name: Check that the tag and the manifest agree
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="${TAG}"
           version="$(grep -E '^version:' manifest.yaml | head -1 | sed -E 's/^version:[[:space:]]*//; s/["'\'']//g')"
           echo "tag: $tag   manifest version: $version"
           if [ "v${version}" != "$tag" ]; then
@@ -103,7 +108,7 @@ jobs:
           echo "ASSET=$asset" >> "$GITHUB_ENV"
 
       - name: Verify the package against the tagged source
-        run: python scripts/verify_package.py "$ASSET" "${GITHUB_REF_NAME}"
+        run: python scripts/verify_package.py "$ASSET" "${TAG}"
 
       - name: Attest the package
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
@@ -119,12 +124,12 @@ jobs:
           # A hand-written body wins if the tag carries one; otherwise fall
           # back to the notes generated from the commits. The endpoint only
           # accepts POST and takes tag_name in the body.
-          notes="docs/release-notes/${GITHUB_REF_NAME}.md"
+          notes="docs/release-notes/${TAG}.md"
           if [ -f "$notes" ]; then
             cp "$notes" "$RUNNER_TEMP/notes.md"
           else
             gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
-              -f tag_name="$GITHUB_REF_NAME" --jq .body > "$RUNNER_TEMP/notes.md"
+              -f tag_name="$TAG" --jq .body > "$RUNNER_TEMP/notes.md"
           fi
           {
             echo
@@ -141,6 +146,6 @@ jobs:
             echo "gh attestation verify $name --repo $GITHUB_REPOSITORY"
             echo '```'
           } >> "$RUNNER_TEMP/notes.md"
-          gh release create "$GITHUB_REF_NAME" "$ASSET" \
-            --title "$GITHUB_REF_NAME" \
+          gh release create "$TAG" "$ASSET" \
+            --title "$TAG" \
             --notes-file "$RUNNER_TEMP/notes.md"

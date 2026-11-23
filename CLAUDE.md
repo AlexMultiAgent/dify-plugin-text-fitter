@@ -57,7 +57,10 @@ message).
 - `codeql-backfill.yml` — manual; analyses a commit that predates CodeQL.
 - `scorecard.yml` — OpenSSF Scorecard; publishes the score and the alerts.
 - `release.yml` — on a `v*` tag: builds, verifies, attests, publishes the
-  release.
+  release. It can also be dispatched by hand with a `tag` input; the tag it
+  works on comes from `inputs.tag || github.ref_name`, never from
+  `GITHUB_REF_NAME` (a manual run is dispatched from a branch, so that would
+  name the branch).
 
 ## Gotchas
 
@@ -182,8 +185,9 @@ caller never sent.
      --pr-body-file <pr-body.md> --output-dir <out>
    ```
 5. Tag the commit and push the tag. Put a hand-written body in
-   `docs/release-notes/<version>.md` if you want one; without it the workflow
-   generates the notes from the commits. The `Release` workflow builds the package
+   `docs/release-notes/v<version>.md` — the file name carries the `v` of the
+   tag, e.g. `docs/release-notes/v0.0.3.md` — if you want one; without it the
+   workflow generates the notes from the commits. The `Release` workflow builds the package
    from a clean checkout of the tag, verifies it the same way, attests it and
    publishes the GitHub Release with the `.difypkg` asset, its SHA256 and the
    command to verify the attestation:
