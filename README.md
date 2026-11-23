@@ -246,6 +246,29 @@ uv audit --locked
 dify plugin package . -o dist/text_fitter-0.0.2.difypkg
 ```
 
+The output contract -- "the tool never returns more than `max_chars`
+characters, on every path" -- is covered by the unit tests and attacked
+with random input by a fuzz target:
+
+```bash
+# Linux only: Atheris bundles libFuzzer and ships no Windows/macOS wheel.
+uv run --group fuzz python -m tests.fuzz_smart_trim -max_total_time=60
+```
+
+## Contributing
+
+Changes reach `main` through a pull request. `main` is protected: the pull
+request has to pass the `CI` and `CodeQL` checks, the branch has to be up to
+date, and one approving review is required before the pull request can be
+merged.
+
+The project is maintained by a single maintainer, so the review requirement
+is not enforced against administrators -- otherwise a one-person project
+could never merge anything. The maintainer still reviews every change
+before merging it, and the CI and CodeQL checks are not bypassable. External
+contributions are welcome; open a pull request and it will be reviewed
+before it lands.
+
 ## Support
 
 GitHub profile: <https://github.com/AlexMultiAgent>
