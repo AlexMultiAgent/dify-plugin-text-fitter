@@ -1,4 +1,9 @@
-* text=auto
+# Every text file is checked out with LF endings on every platform.
+# `text=auto` alone checks out the native line endings, and the plugin
+# package is built from the working tree -- a CRLF file ships with CRLF and
+# stops matching the committed source. That hits LICENSE and _assets/icon.svg,
+# which ship in the package and have no extension rule below.
+* text=auto eol=lf
 *.py text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
