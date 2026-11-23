@@ -119,7 +119,9 @@ the implementation avoids recomputing all pairwise overlaps.
 
 For documents with more than 5000 sentence spans, only the top 5000 by base
 score enter MMR. This bounds work for very large documents and is reported as
-`mmr_prefilter`.
+`mmr_prefilter`. The pre-filter bounds the MMR loop, not the result: the
+sentences it leaves out are added back in score order until the budget is
+full, so a large document still yields as much text as the caller asked for.
 
 ## Fallback behavior
 

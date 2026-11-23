@@ -128,6 +128,10 @@ _MMR_FULL_LIMIT = 5000
 # sentences, only the top-scoring _MMR_CANDIDATE_CAP candidates are
 # passed to MMR.  This bounds the MMR inner loop to a fixed budget
 # regardless of input size.
+#
+# The pre-filter only bounds the MMR loop; it must not bound the output.
+# The sentences it leaves out are added back by _fill_remaining_budget,
+# so a large document still yields as much text as the caller asked for.
 _MMR_CANDIDATE_CAP = 5000
 
 # Common English abbreviations that should NOT be treated as sentence boundaries.
@@ -271,6 +275,15 @@ def _extract_key_sentences(
                 # Map back to original indices for position-based reordering
                 kept_list = sorted(kept)
                 selected_indices = [kept_list[i] for i in selected_indices]
+            # The pre-filter limited which sentences MMR could choose from,
+            # not how much text the tool may return. Complete the result with
+            # the best sentences the pre-filter left out.
+            selected_indices = _fill_remaining_budget(
+                sentences,
+                scores,
+                selected_indices,
+                max_chars,
+            )
             algorithm = "mmr_prefilter"
         else:
             selected_indices = _mmr_select(
@@ -360,6 +373,44 @@ def _mmr_select(
             diversity = 1.0 - max_overlap[idx]
             remaining[idx] = lambda_mmr * scores[idx] + inv_lambda * diversity
 
+    return selected_indices
+
+
+def _fill_remaining_budget(
+    sentences: list[str],
+    scores: list[float],
+    selected_indices: list[int],
+    max_chars: int,
+) -> list[int]:
+    """Complete the selection with the best sentences that are still unused.
+
+    The MMR pre-filter makes only the top _MMR_CANDIDATE_CAP sentences
+    eligible for selection. That bounds the MMR loop, but without this step
+    it also caps the output: on a large document the tool would return the
+    candidate pool and drop the rest of the document even when the budget
+    had room for it.
+
+    The remaining budget is filled with the highest-scoring unselected
+    sentences, in the same way the greedy selection does.
+    """
+    used = sum(len(sentences[i]) for i in selected_indices)
+    if used >= max_chars:
+        return selected_indices
+
+    chosen = set(selected_indices)
+    ranked = sorted(
+        (i for i in range(len(sentences)) if i not in chosen),
+        key=lambda i: scores[i],
+        reverse=True,
+    )
+    for idx in ranked:
+        sent_len = len(sentences[idx])
+        if used + sent_len > max_chars:
+            continue
+        selected_indices.append(idx)
+        used += sent_len
+        if used >= max_chars:
+            break
     return selected_indices
 
 

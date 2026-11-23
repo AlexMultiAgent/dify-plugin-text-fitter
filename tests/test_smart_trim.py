@@ -114,6 +114,89 @@ class SmartTrimSentenceBoundaryTests(unittest.TestCase):
                     self.assertLessEqual(len(result), limit)
 
 
+class MmrPrefilterTests(unittest.TestCase):
+    """The MMR pre-filter bounds the MMR loop, not the output.
+
+    Only the top candidates enter MMR, so the sentences it leaves out must
+    be added back -- otherwise a large document loses most of its text even
+    when the budget has room for it.
+    """
+
+    def test_prefilter_still_returns_as_much_text_as_the_budget_allows(self):
+        text = " ".join(f"Sentence number {i} carries some content." for i in range(30))
+
+        with (
+            patch.object(smart_trim, "_MMR_FULL_LIMIT", 10),
+            patch.object(smart_trim, "_MMR_CANDIDATE_CAP", 5),
+        ):
+            result, algorithm = _extract_key_sentences(
+                text, max_chars=len(text), method="mmr"
+            )
+
+        self.assertEqual(algorithm, "mmr_prefilter")
+        self.assertLessEqual(len(result), len(text))
+        # The pre-filter must not decide how much text the tool returns.
+        self.assertGreaterEqual(len(result), 0.95 * len(text))
+
+    def test_prefilter_respects_the_character_budget(self):
+        text = " ".join(f"Sentence number {i} carries some content." for i in range(30))
+
+        with (
+            patch.object(smart_trim, "_MMR_FULL_LIMIT", 10),
+            patch.object(smart_trim, "_MMR_CANDIDATE_CAP", 5),
+        ):
+            result, _algorithm = _extract_key_sentences(
+                text, max_chars=120, method="mmr"
+            )
+
+        self.assertLessEqual(len(result), 120)
+
+
+class RealSdkMessageTests(unittest.TestCase):
+    """The suite must exercise the real SDK message objects.
+
+    FakeSmartTrimTool replaces the three message factories with tuples, so
+    nothing else checks that the runtime accepts the values the tool emits.
+    """
+
+    def test_real_sdk_messages_hold_the_output_contract(self):
+        from dify_plugin.entities.tool import ToolRuntime
+
+        tool = SmartTrimTool(
+            runtime=ToolRuntime(credentials={}, user_id=None, session_id=None),
+            session=None,
+        )
+
+        text = "First sentence. Second sentence."
+        messages = list(tool._invoke({"text": text, "max_chars": 20}))
+
+        self.assertEqual(len(messages), 7)
+        kinds = [message.type.value for message in messages]
+        self.assertEqual(kinds.count("text"), 1)
+        self.assertEqual(kinds.count("json"), 1)
+
+        text_message = next(m for m in messages if m.type.value == "text")
+        output = text_message.message.text
+        self.assertLessEqual(len(output), 20)
+
+        variables = {
+            message.message.variable_name: message.message.variable_value
+            for message in messages
+            if message.type.value == "variable"
+        }
+        self.assertEqual(variables["original_char_count"], len(text))
+        self.assertEqual(variables["processed_char_count"], len(output))
+        self.assertIsInstance(variables["was_trimmed"], bool)
+        self.assertIsInstance(variables["compression_ratio"], float)
+        self.assertIn(
+            variables["algorithm"],
+            {"passthrough", "greedy", "mmr", "mmr_prefilter", "boundary_truncation"},
+        )
+
+        json_message = next(m for m in messages if m.type.value == "json")
+        self.assertEqual(json_message.message.json_object["text"], output)
+
+
 class SmartTrimFailureTests(unittest.TestCase):
     def test_algorithm_failure_returns_single_safe_truncation(self):
         tool = FakeSmartTrimTool.__new__(FakeSmartTrimTool)

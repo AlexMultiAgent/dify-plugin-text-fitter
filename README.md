@@ -193,14 +193,14 @@ already-selected sentences, updated incrementally per round. O(k × n) overall.
 
 The `algorithm` output variable records which variant was actually used:
 
-| `algorithm` value     | Trigger                            | Behavior                                                 |
-| --------------------- | ---------------------------------- | -------------------------------------------------------- |
-| `passthrough`         | text ≤ max_chars                   | No processing; return original text                      |
-| `greedy`              | method = `"greedy"`                | Pure score-ranked selection                              |
-| `mmr`                 | method = `"mmr"`, ≤ 5000 sentences | Full MMR on all sentences                                |
-| `mmr_prefilter`       | method = `"mmr"`, > 5000 sentences | Score-ranked pre-filter to top 5000 candidates, then MMR |
-| `boundary_truncation` | emergency fallback                 | No sentence fits budget; cut at sentence/word boundary   |
-| `error_truncation`    | internal error fallback            | Guarantee the output stays within `max_chars`            |
+| `algorithm` value     | Trigger                            | Behavior                                               |
+| --------------------- | ---------------------------------- | ------------------------------------------------------ |
+| `passthrough`         | text ≤ max_chars                   | No processing; return original text                    |
+| `greedy`              | method = `"greedy"`                | Pure score-ranked selection                            |
+| `mmr`                 | method = `"mmr"`, ≤ 5000 sentences | Full MMR on all sentences                              |
+| `mmr_prefilter`       | method = `"mmr"`, > 5000 sentences | Pre-filter to top 5000, then MMR, then fill the budget |
+| `boundary_truncation` | emergency fallback                 | No sentence fits budget; cut at sentence/word boundary |
+| `error_truncation`    | internal error fallback            | Guarantee the output stays within `max_chars`          |
 
 ### Reordering & Fallback
 
