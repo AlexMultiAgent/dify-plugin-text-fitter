@@ -1,6 +1,7 @@
 # Text Fitter
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/AlexMultiAgent/dify-plugin-text-fitter/badge)](https://api.scorecard.dev/projects/github.com/AlexMultiAgent/dify-plugin-text-fitter)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/17040/badge)](https://www.bestpractices.dev/projects/17040)
 
 A Dify tool plugin that ensures text fits within LLM context window limits
 via intelligent extractive summarization. Supports Chinese (Simplified &
