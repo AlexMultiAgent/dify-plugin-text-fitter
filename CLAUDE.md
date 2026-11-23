@@ -12,6 +12,7 @@ Dify tool plugin that trims text to fit an LLM context window. One tool
 | `uv run ruff check main.py provider tools tests` | Lint |
 | `uv run ruff format --check main.py provider tools tests` | Format check (CI gate) |
 | `uv audit --locked` | Dependency audit |
+| `uv run --group fuzz python -m tests.fuzz_smart_trim -max_total_time=60` | Fuzz the output contract (Linux only) |
 | `dify plugin package . -o dist/text_fitter-<version>.difypkg` | Build marketplace package |
 
 No ruff config exists — ruff runs on defaults (88 columns).
@@ -20,6 +21,10 @@ Ruff and pip-audit live in the `dev` dependency group, so `uv run ruff` uses the
 locked version instead of floating on the latest release the way `uvx ruff`
 does. Dependabot manages that group; `dify-plugin` is excluded from it because
 the plugin daemon installs it from its own lagging package mirror.
+
+Atheris lives in a separate `fuzz` group: it bundles libFuzzer and ships
+Linux-only wheels, so `uv sync --group dev` has to keep installing on Windows
+and macOS. The fuzz target runs in its own CI job on ubuntu-latest.
 
 ## Architecture
 
@@ -31,6 +36,7 @@ provider/text_fitter.py    # ToolProvider; _validate_credentials is a no-op
 tools/smart_trim.yaml      # tool schema: parameters + output_schema
 tools/smart_trim.py        # the entire implementation
 tests/test_smart_trim.py   # regression tests
+tests/fuzz_smart_trim.py   # atheris fuzz target for the output contract
 docs/architecture.md       # component map + algorithm flow (Mermaid)
 ```
 

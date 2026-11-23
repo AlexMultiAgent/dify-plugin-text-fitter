@@ -178,3 +178,10 @@ Implementation:
 Regression tests:
 
 - [`tests/test_smart_trim.py`](../tests/test_smart_trim.py)
+
+Fuzz target:
+
+- [`tests/fuzz_smart_trim.py`](../tests/fuzz_smart_trim.py) -- Atheris harness
+  that attacks the output contract ("never more than `max_chars`, on every
+  path") with random input. Runs in CI on ubuntu-latest; Atheris ships
+  Linux-only wheels.
