@@ -48,12 +48,21 @@ message).
 ## Gotchas
 
 **Packaging.** `.difyignore` alone decides what ships. It must keep `dist/`,
-`docs/`, `tests/`, `*.difypkg`, `.env.example` and caches out — a scratch file
-left in `dist/` lands in the release. Verify after every build:
+`docs/`, `tests/`, `*.difypkg`, `.env.example` and caches out. Anything left in
+the repository root that is not listed there lands in the release — a scratch
+file, or a stale `.difypkg` — while `dist/` itself is excluded, so build
+output never ships. Verify after every build:
 
 ```bash
 python -c "import zipfile; print(zipfile.ZipFile('dist/<pkg>.difypkg').namelist())"
 ```
+
+**The package is built from the working tree, not from the git blobs.** A file
+with CRLF endings in the working tree ships with CRLF, so the artifact stops
+matching the tagged source even though the content is identical. `git status`
+does not show it: `.gitattributes` normalises the comparison. `git checkout --
+<path>` does not fix it either, because git sees the normalised content as
+unchanged — delete the file and check it out again to get the `eol=lf` form.
 
 **Version bumps.** `pyproject.toml`'s version is mirrored into `uv.lock`; bump
 one without the other and CI fails at `uv sync --locked`. `manifest.yaml`
