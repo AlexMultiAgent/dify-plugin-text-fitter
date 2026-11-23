@@ -9,3 +9,4 @@ __pycache__/
 dist/
 cookies.txt
 _test_*.py
+CLAUDE.local.md

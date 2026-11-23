@@ -4,6 +4,7 @@
 .gitignore
 .difyignore
 CLAUDE.md
+CLAUDE.local.md
 SECURITY.md
 .env.example
 __pycache__/
