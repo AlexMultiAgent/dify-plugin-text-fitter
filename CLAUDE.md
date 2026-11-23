@@ -201,6 +201,9 @@ caller never sent.
    ```
    The workflow pins the Dify plugin CLI by version and checksum; it is a Go
    binary published with `langgenius/dify-plugin-daemon`, not a Python package.
+   Once the release is published, refresh the version-related justifications in
+   `.bestpractices.json` — they name the latest published tag, so they go stale
+   as soon as the next one exists.
 6. PR to `langgenius/dify-plugins`: change exactly one `.difypkg` (removing older
    versions in the same directory is allowed), named `<plugin>-<version>.difypkg`.
    The body follows that repo's PR template and must be English-only, with

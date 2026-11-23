@@ -226,6 +226,29 @@ for details.
 
 ## Changelog
 
+### 0.0.3
+
+- **MMR no longer throws away most of a large document.** The pre-filter that
+  bounds the MMR loop also made every sentence outside the candidate pool
+  ineligible for selection, so a document of more than 5000 sentences came back
+  capped at the pool — with a budget of 1,000,000 characters, MMR returned
+  115,552 where greedy returned 999,998. The sentences the pre-filter leaves out
+  are now added back in score order until the budget is full.
+- **Whitespace between sentences is kept.** A chunk that was only whitespace was
+  skipped while splitting, so the selected spans did not add up to the text the
+  caller sent — `A.\n \nB.` came back as `A.\nB.`. The whitespace now travels
+  with the span in front of it, and the spans concatenate back into the input.
+- **The release workflow cuts from the tag it was given.** A manual run is
+  dispatched from a branch, so the tag check compared the tag with the branch
+  name and failed the job.
+- **Packaging hygiene:** `pyproject.toml` no longer ships in the package, and
+  the files that do ship are checked out with LF endings on every platform, so
+  a package built on Windows matches the committed source.
+- **Lint and documentation consistency:** every workflow and the README lint
+  `scripts/`, the required status checks are named as they actually appear in
+  the branch protection settings, and the abbreviation pattern no longer
+  changes from process to process.
+
 ### 0.0.2
 
 - **Selected text is now returned verbatim.** The previous release rewrote the
@@ -251,7 +274,7 @@ uv sync --locked --group dev
 uv run python -m unittest discover -s tests -v
 uv run ruff check main.py provider tools tests scripts
 uv audit --locked
-dify plugin package . -o dist/text_fitter-0.0.2.difypkg
+dify plugin package . -o dist/text_fitter-0.0.3.difypkg
 ```
 
 The output contract -- "the tool never returns more than `max_chars`

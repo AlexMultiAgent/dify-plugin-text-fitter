@@ -1,6 +1,6 @@
 # Text Fitter Architecture
 
-This document describes the implementation shipped with Text Fitter `0.0.2`.
+This document describes the implementation shipped with Text Fitter `0.0.3`.
 The plugin is a stateless Dify tool: it accepts text and a character budget,
 selects source spans from the input, and returns the selected text plus
 metadata.
