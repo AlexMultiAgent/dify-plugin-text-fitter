@@ -65,6 +65,11 @@ spaces, newlines, and closing quotes are retained.
 boundary offsets, and then slices the original text. The copy is used only to
 prevent false boundaries; returned text never contains placeholder characters.
 
+No character of the input is dropped. A chunk that is only whitespace is
+attached to the span in front of it -- or, at the very start of the input, to
+the span in front of that -- so the spans always concatenate back into the
+original text.
+
 The splitter recognizes:
 
 - CJK sentence endings such as `。！？`, with trailing ellipses and closing

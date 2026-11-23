@@ -113,6 +113,34 @@ class SmartTrimSentenceBoundaryTests(unittest.TestCase):
                     result, _algorithm = _extract_key_sentences(text, limit)
                     self.assertLessEqual(len(result), limit)
 
+    def test_splitting_preserves_every_character_of_the_input(self):
+        """Splitting must locate boundaries, never drop characters.
+
+        A whitespace-only chunk between two boundaries is part of the text
+        the caller sent. Dropping it would rewrite the input, which is the
+        guarantee the plugin makes.
+        """
+        samples = [
+            "A.\n \nB.",
+            "\n\nHello world. Bye.",
+            "Intro paragraph here.\n \n- item one\n- item two",
+            "First sentence. Second sentence.",
+            "正文。\n \n下一句。",
+            "Heading\r\n \r\n- item one",
+        ]
+
+        for text in samples:
+            with self.subTest(text=text):
+                self.assertEqual("".join(_split_sentences(text)), text)
+
+    def test_trimmed_output_keeps_the_whitespace_between_sentences(self):
+        text = "Intro paragraph here.\n \n- item one\n- item two"
+
+        result, algorithm = _extract_key_sentences(text, max_chars=100, method="greedy")
+
+        self.assertEqual(algorithm, "greedy")
+        self.assertEqual(result, text)
+
 
 class MmrPrefilterTests(unittest.TestCase):
     """The MMR pre-filter bounds the MMR loop, not the output.

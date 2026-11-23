@@ -491,14 +491,28 @@ def _split_sentences(text: str) -> list[str]:
         for match in pattern.finditer(protected)
     }
 
-    sentences: list[str] = []
+    # The spans are built as lists of parts and joined once at the end: a
+    # whitespace chunk is attached to the span in front of it, and appending
+    # to a growing string would make the split quadratic.
+    spans: list[list[str]] = []
+    leading: list[str] = []
     start = 0
     for end in sorted(boundary_ends | {len(text)}):
-        sentence = text[start:end]
-        if sentence.strip():
-            sentences.append(sentence)
+        chunk = text[start:end]
         start = end
-    return sentences
+        if chunk.strip():
+            spans.append([chunk])
+        elif spans:
+            # Whitespace between two boundaries belongs to the text it
+            # separates. Dropping it would rewrite the input, so it is
+            # attached to the span in front of it.
+            spans[-1].append(chunk)
+        else:
+            # Leading whitespace has no span in front of it yet.
+            leading.append(chunk)
+    if leading and spans:
+        spans[0] = leading + spans[0]
+    return ["".join(parts) for parts in spans]
 
 
 def _score_sentences(
