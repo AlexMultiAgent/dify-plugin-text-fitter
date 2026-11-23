@@ -8,7 +8,7 @@ Dify tool plugin that trims text to fit an LLM context window. One tool
 | Command | Purpose |
 |---|---|
 | `uv sync --locked --group dev` | Install locked deps (CI uses `--locked --group dev`) |
-| `uv run python -m unittest discover -s tests -v` | 18 unit tests |
+| `uv run python -m unittest discover -s tests -v` | 30 unit tests |
 | `uv run ruff check main.py provider tools tests` | Lint |
 | `uv run ruff format --check main.py provider tools tests` | Format check (CI gate) |
 | `uv audit --locked` | Dependency audit |
@@ -37,6 +37,7 @@ tools/smart_trim.yaml      # tool schema: parameters + output_schema
 tools/smart_trim.py        # the entire implementation
 tests/test_smart_trim.py   # regression tests
 tests/fuzz_smart_trim.py   # atheris fuzz target for the output contract
+.bestpractices.json        # OpenSSF Best Practices self-attestation
 docs/architecture.md       # component map + algorithm flow (Mermaid)
 ```
 
@@ -86,6 +87,30 @@ locale key would drop a whole language without any error (a test guards the
 key set). Check the SDK and the daemon before promising a new interface
 locale. A new *processing* language — splitting, tokenizing, scoring — is
 independent of this and needs no locale support at all.
+
+**The badge self-attestation lives in `.bestpractices.json`.** The OpenSSF
+Best Practices entry (project 17040, `passing` level) is filled from that
+file: the badge app reads it from the repository root and pre-fills the edit
+form. It is the reviewable record of the answers behind the badge, so it has
+to stay in step with the repository — a justification that points at a file or
+a workflow that has since moved would make the attestation wrong.
+`tests/test_bestpractices_json.py` checks the file against a snapshot of the
+badge app's criteria rules and verifies that every repository path a
+justification cites still exists; refresh the snapshot in that test when the
+badge app changes its criteria.
+
+Two rules govern how the file is applied. The badge app's automation
+confidence for it is 3.5, below the override threshold of 4, so it can only
+fill **blank** fields — it never overrides a value that is already set, and
+`name` and `description` are filled from GitHub when the project is created.
+To change an existing field, use an automation proposal URL instead, with
+`overrides=` naming the fields to force:
+
+```text
+https://www.bestpractices.dev/en/projects/17040/passing/edit?overrides=name%2Cdescription&name=...&description=...
+```
+
+The proposal pre-fills the form; a human still has to save it.
 
 **The output contract is the guarantee.** Output must never exceed `max_chars`,
 including on the internal-error path: that path truncates and reports
