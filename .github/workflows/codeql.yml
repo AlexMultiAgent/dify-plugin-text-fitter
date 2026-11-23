@@ -23,28 +23,36 @@ permissions:
   contents: read
   actions: read
   packages: read
-  security-events: write
 
 jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Job-level permissions replace the workflow-level block instead of
+    # extending it, so the read permissions are repeated here. Only
+    # `security-events` is escalated: the analyze step uploads SARIF to the
+    # code scanning tab.
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
         language:
           - python
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea  # v4.39.4
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea  # v4.39.4
         with:
           category: "/language:${{ matrix.language }}"
