@@ -139,6 +139,11 @@ provides it; CI downloads it and pins it by version and checksum.
 `tests/fuzz_smart_trim.py` locally with a stub `atheris` module on `sys.path`;
 the target only uses `atheris.Setup` and `atheris.Fuzz`.
 
+**Adding a directory means touching three places.** A new top-level directory
+has to appear in `.difyignore` (so it does not ship), in the ruff commands
+(so CI lints it) and in the file map above (so it is findable). Missing the
+ruff one leaves the directory unlinted without any error.
+
 **The output contract is the guarantee.** Output must never exceed `max_chars`,
 including on the internal-error path: that path truncates and reports
 `algorithm=error_truncation`, and must not leak the traceback as an output
