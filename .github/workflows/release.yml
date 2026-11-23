@@ -104,6 +104,8 @@ jobs:
           plugin="$(grep -E '^name:' manifest.yaml | head -1 | sed -E 's/^name:[[:space:]]*//; s/["'\'']//g')"
           version="$(grep -E '^version:' manifest.yaml | head -1 | sed -E 's/^version:[[:space:]]*//; s/["'\'']//g')"
           asset="dist/${plugin}-${version}.difypkg"
+          # dist/ is gitignored, so a clean checkout does not have it.
+          mkdir -p dist
           dify plugin package . -o "$asset"
           echo "ASSET=$asset" >> "$GITHUB_ENV"
 
