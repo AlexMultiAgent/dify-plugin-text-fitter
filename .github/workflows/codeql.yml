@@ -18,6 +18,9 @@ on:
     # Weekly, off-peak minute so this does not pile onto the same cron slot
     # as every other repository's scheduled workflows.
     - cron: "19 4 * * 1"
+  workflow_dispatch:
+    # Lets a single analysis be re-run on demand, e.g. for a commit that
+    # predates this workflow. See codeql-backfill.yml.
 
 permissions:
   contents: read

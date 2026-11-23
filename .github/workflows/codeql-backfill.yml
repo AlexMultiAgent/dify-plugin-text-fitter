@@ -1,0 +1,58 @@
+# Backfills a CodeQL analysis onto a commit that predates the CodeQL
+# workflow.
+#
+# Scorecard's SAST check only counts a commit as analysed when it was merged
+# through a pull request AND carries a `github-code-scanning` check run. The
+# first pull request in this repository (#1) was merged before the CodeQL
+# workflow existed, so that commit stays scored as unanalysed no matter how
+# many analyses run today. This workflow attaches a real CodeQL analysis to
+# it -- the SARIF is uploaded against the old commit, so the check run lands
+# on that commit rather than on the branch head.
+#
+# Usage: Actions -> CodeQL backfill -> Run workflow -> "Commit SHA to
+# analyse". The commit must already exist in the repository.
+
+name: CodeQL backfill
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit SHA to analyse"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Job-level permissions replace the workflow-level block instead of
+    # extending it, so the read permission is repeated here. Only
+    # `security-events` is escalated: the analyze step uploads SARIF to the
+    # code scanning tab.
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea  # v4.39.4
+        with:
+          languages: python
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea  # v4.39.4
+        with:
+          category: "/language:python"
+          # Upload the SARIF against the analysed commit, not against the
+          # branch head the workflow was dispatched from.
+          ref: ${{ inputs.ref }}
