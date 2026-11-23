@@ -90,7 +90,7 @@ the next LLM node's prompt templates and output generation.
 
 ## Language Support
 
-The plugin interface supports four locales:
+The plugin ships translations for four locales:
 
 | Locale    | Language            |
 | --------- | ------------------- |
@@ -100,7 +100,14 @@ The plugin interface supports four locales:
 | `ja_JP`   | Japanese            |
 
 All parameter labels, descriptions, and option values are translated across
-the supported locales.
+those locales.
+
+Dify renders three of them today. The plugin manifest format carries
+`en_US`, `zh_Hans`, `ja_JP` and `pt_BR` only, so the `zh_Hant` strings fall
+back to English in the Dify interface, and Portuguese falls back to English
+because no `pt_BR` translation is shipped. The `zh_Hant` strings stay in the
+plugin files and take effect if Dify adds the locale.
+
 Text processing handles Chinese, Japanese, and English, with CJK-aware
 sentence splitting and abbreviation protection.
 

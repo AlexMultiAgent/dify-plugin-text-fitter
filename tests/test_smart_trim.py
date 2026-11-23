@@ -1,7 +1,11 @@
 import io
 import unittest
 from contextlib import redirect_stderr
+from pathlib import Path
+from typing import ClassVar
 from unittest.mock import patch
+
+import yaml
 
 from tools import smart_trim
 from tools.smart_trim import SmartTrimTool, _extract_key_sentences, _split_sentences
@@ -213,6 +217,56 @@ class TraditionalChineseTests(unittest.TestCase):
         }
         self.assertEqual(variables["algorithm"], "passthrough")
         self.assertFalse(variables["was_trimmed"])
+
+
+def _collect_i18n_blocks(node, trail, blocks):
+    """Collect every {locale: text} block in a YAML document."""
+    if isinstance(node, dict):
+        if "en_US" in node:
+            blocks.append((trail, node))
+            return
+        for key, value in node.items():
+            _collect_i18n_blocks(value, f"{trail}.{key}", blocks)
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            _collect_i18n_blocks(value, f"{trail}[{index}]", blocks)
+
+
+class PluginLocaleTests(unittest.TestCase):
+    """Guard the shipped translations against a silent locale typo.
+
+    Dify's plugin manifest format carries only en_US, zh_Hans, ja_JP and
+    pt_BR, so the zh_Hant strings are never rendered today. They are kept
+    because Dify may add the locale, which makes a typo in a locale key the
+    likely way to lose a whole language without any error being raised.
+    """
+
+    EXPECTED_LOCALES: ClassVar[set[str]] = {"en_US", "ja_JP", "zh_Hans", "zh_Hant"}
+
+    @classmethod
+    def setUpClass(cls):
+        root = Path(__file__).resolve().parent.parent
+        cls.blocks = []
+        for relative in (
+            "manifest.yaml",
+            "provider/text_fitter.yaml",
+            "tools/smart_trim.yaml",
+        ):
+            path = root / relative
+            document = yaml.safe_load(path.read_text(encoding="utf-8"))
+            _collect_i18n_blocks(document, relative, cls.blocks)
+
+    def test_every_translation_block_carries_the_same_locales(self):
+        self.assertTrue(self.blocks, "no translation blocks were found")
+        for trail, block in self.blocks:
+            with self.subTest(block=trail):
+                self.assertEqual(set(block), self.EXPECTED_LOCALES)
+
+    def test_no_translation_is_empty(self):
+        for trail, block in self.blocks:
+            for locale, text in block.items():
+                with self.subTest(block=trail, locale=locale):
+                    self.assertTrue(text.strip(), f"{locale} is empty")
 
 
 if __name__ == "__main__":

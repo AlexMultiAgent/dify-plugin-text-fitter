@@ -8,7 +8,7 @@ Dify tool plugin that trims text to fit an LLM context window. One tool
 | Command | Purpose |
 |---|---|
 | `uv sync --locked --group dev` | Install locked deps (CI uses `--locked --group dev`) |
-| `uv run python -m unittest discover -s tests -v` | 16 unit tests |
+| `uv run python -m unittest discover -s tests -v` | 18 unit tests |
 | `uv run ruff check main.py provider tools tests` | Lint |
 | `uv run ruff format --check main.py provider tools tests` | Format check (CI gate) |
 | `uv audit --locked` | Dependency audit |
@@ -68,6 +68,15 @@ workflow node (the wireable input); `form: form` renders under "Settings".
 `text` is `llm`; `max_chars`, `method`, `mmr_lambda` are `form`. The SDK's
 `ToolParameterForm` enum has no `llm+form` value — a parameter is one or the
 other, never both.
+
+**Plugin locales.** The Dify plugin manifest format carries only `en_US`,
+`zh_Hans`, `ja_JP` and `pt_BR`. The SDK's `I18nObject` drops every other key
+silently, so the `zh_Hant` strings in the YAML files are never rendered today —
+they are kept so they take effect if Dify adds the locale, and a typo in a
+locale key would drop a whole language without any error (a test guards the
+key set). Check the SDK and the daemon before promising a new interface
+locale. A new *processing* language — splitting, tokenizing, scoring — is
+independent of this and needs no locale support at all.
 
 **The output contract is the guarantee.** Output must never exceed `max_chars`,
 including on the internal-error path: that path truncates and reports
