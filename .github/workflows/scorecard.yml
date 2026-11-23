@@ -59,6 +59,14 @@ jobs:
           results_file: results.sarif
           results_format: sarif
           publish_results: true
+          # The workflow's GITHUB_TOKEN cannot read classic branch-protection
+          # rules, so the Branch-Protection check aborts with an internal
+          # error (-1) instead of reporting a result. A fine-grained PAT with
+          # "Administration: Read-only" stored as the SCORECARD_TOKEN secret
+          # fixes that; the fallback keeps this workflow working before the
+          # secret exists.
+          # See: https://github.com/ossf/scorecard-action/blob/main/docs/authentication/fine-grained-auth-token.md
+          repo_token: ${{ secrets.SCORECARD_TOKEN || github.token }}
           # Fail the step if the Scorecard API rejects the results, so a
           # silently-unpublished run cannot pass. See:
           # https://github.com/ossf/scorecard-action#when-publishing-fails
