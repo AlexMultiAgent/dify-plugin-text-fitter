@@ -116,7 +116,16 @@ jobs:
         run: |
           sha256="$(sha256sum "$ASSET" | cut -d' ' -f1)"
           name="$(basename "$ASSET")"
-          gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes?tag_name=$GITHUB_REF_NAME" --jq .body > "$RUNNER_TEMP/notes.md"
+          # A hand-written body wins if the tag carries one; otherwise fall
+          # back to the notes generated from the commits. The endpoint only
+          # accepts POST and takes tag_name in the body.
+          notes="docs/release-notes/${GITHUB_REF_NAME}.md"
+          if [ -f "$notes" ]; then
+            cp "$notes" "$RUNNER_TEMP/notes.md"
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+              -f tag_name="$GITHUB_REF_NAME" --jq .body > "$RUNNER_TEMP/notes.md"
+          fi
           {
             echo
             echo

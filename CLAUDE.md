@@ -181,7 +181,9 @@ caller never sent.
    python validator/validate-difypkg.py <abs-path-to-pkg> --toolkit-dir . \
      --pr-body-file <pr-body.md> --output-dir <out>
    ```
-5. Tag the commit and push the tag. The `Release` workflow builds the package
+5. Tag the commit and push the tag. Put a hand-written body in
+   `docs/release-notes/<version>.md` if you want one; without it the workflow
+   generates the notes from the commits. The `Release` workflow builds the package
    from a clean checkout of the tag, verifies it the same way, attests it and
    publishes the GitHub Release with the `.difypkg` asset, its SHA256 and the
    command to verify the attestation:
